@@ -1,0 +1,46 @@
+// Copyright 2018 The RPSCC Authors. All Rights Reserved.
+
+syntax = "proto3";
+
+package rpscc;
+
+message Message {
+  enum MessageType {
+    config = 0;  // used by master
+    request = 1;  // used by server/agent
+    heartbeat = 2;  // used by master/server/agent
+  }
+
+  message RequestMessage {
+    enum RequestType {
+      key_value = 0;
+      key = 1;
+      ack = 2;  // response from server
+      block = 3;  // used by SSD
+    }
+    RequestType request_type = 1;
+    repeated int32 keys = 2;
+    repeated float values = 3;
+  }
+
+  message ConfigMessage {
+    int32 worker_num = 1;
+    int32 server_num = 2;
+    int32 key_range = 3;  // the number of features
+    repeated int32 server_ip = 4;
+    repeated int32 partition = 5;  // used for consistent hashing
+    repeated int32 server_id = 6;
+    int32 bound = 7;  // ASP = INF, BSP = 1
+  }
+
+  message HeartbeatMessage {
+    bool is_live = 1;
+  }
+
+  int32 send_id = 1;
+  int32 recv_id = 2;
+  MessageType message_type = 3;
+  ConfigMessage config_msg = 4;
+  RequestMessage request_msg = 5;
+  HeartbeatMessage heartbeat_msg= 6;
+}
