@@ -28,7 +28,10 @@ class Communicator {
   virtual int32 Send(const vector<int32>& dst_ids,
                      const std::string& message) = 0;
 
-  // Receive
+  // Receive a message from any node
+  // Return:
+  // > 0 : bytes received
+  // - 1 : error
   virtual int32 Receive(char* message, const int max_size) = 0;
   virtual int32 Receive(std::string* message) = 0;
 };
