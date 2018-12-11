@@ -1,9 +1,12 @@
+// Copyright 2018 The RPSCC Authors. All Rights Reserved.
 //
 // Created by PeikaiZheng on 2018/12/8.
 //
 
 #ifndef SRC_MASTER_TASK_CONFIG_H_
 #define SRC_MASTER_TASK_CONFIG_H_
+
+#include <vector>
 
 #include "src/util/common.h"
 
@@ -26,6 +29,6 @@ class TaskConfig {
   int32 bound_;
 };
 
-}
+}  // namespace rpscc
 
-#endif //SRC_MASTER_TASK_CONFIG_H_
+#endif  // SRC_MASTER_TASK_CONFIG_H_
