@@ -33,6 +33,10 @@ message Message {
     int32 bound = 7;  // ASP = INF, BSP = 1
   }
 
+  message RegisterMessage {
+    string ip = 1;
+  }
+
   message HeartbeatMessage {
     bool is_live = 1;
   }
