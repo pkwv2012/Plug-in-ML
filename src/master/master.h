@@ -9,6 +9,7 @@
 #include <mutex>
 
 #include "src/message/message.pb.h"
+#include "src/master/task_config.h"
 
 namespace rpscc {
 
@@ -19,7 +20,7 @@ class Master {
   // wait for servers & agents ready
   void WaitForClusterReady();
 
-  DeliverConfig();
+  bool DeliverConfig();
 
   void MainLoop();
 
