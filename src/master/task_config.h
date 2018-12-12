@@ -8,6 +8,7 @@
 
 #include <vector>
 
+#include "src/message/message.pb.h"
 #include "src/util/common.h"
 
 namespace rpscc {
@@ -16,7 +17,7 @@ class TaskConfig {
  public:
   TaskConfig();
 
-  // converse to ConfigMessage
+  // convert to ConfigMessage
   Message_ConfigMessage* ToMessage();
 
  private:

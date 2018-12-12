@@ -8,7 +8,7 @@ cmake_minimum_required(VERSION 3.9)
 include("FindProtobuf")
 find_package(Protobuf REQUIRED)
 
-add_definitions("-std=c++11")
+add_definitions("-std=c++14")
 
 include_directories(
         "${PROJECT_SOURCE_DIR}"
