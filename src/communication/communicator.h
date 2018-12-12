@@ -7,27 +7,24 @@
 #include <string>
 #include <vector>
 
+#include "src/util/common.h"
+
 namespace rpscc {
 
 // Communicator is a abstract class, which will be implemented by real
 // communicators, such as MPI, ZMQ or unix socket.
 class Communicator {
  public:
-  virtual ~Communicator() { }
+  virtual ~Communicator() {}
+  virtual void Finalize() = 0;
 
   // Send a message from one node to another node,
-  // or send a message from one node to some nodes.
   // Return:
   // > 0 : bytes send
   // - 1 : error
   virtual int32 Send(int32 dst_id, const char* const message,
                      int32 len) = 0;
   virtual int32 Send(int32 dst_id, const std::string& message) = 0;
-  virtual int32 Send(const vector<int32>& dst_ids,
-                     const char* const message, int32 len) = 0;
-  virtual int32 Send(const vector<int32>& dst_ids,
-                     const std::string& message) = 0;
-
   // Receive a message from any node
   // Return:
   // > 0 : bytes received
@@ -39,4 +36,5 @@ class Communicator {
 }  // namespace rpscc
 
 #endif  // SRC_COMMUNICATION_COMMUNICATOR_H_
+
 
