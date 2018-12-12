@@ -4,6 +4,7 @@
 #ifndef SRC_COMMUNICATION_ZMQ_COMMUNICATOR_H_
 #define SRC_COMMUNICATION_ZMQ_COMMUNICATOR_H_
 
+#include <map>
 #include <string>
 
 #include "src/communication/communicator.h"
@@ -23,7 +24,7 @@ class ZmqCommunicator : public Communicator {
   // Return:
   // true : Init successfully
   // false : Init failed
-  virtual bool Initialize(int32 ring_size, bool is_sender,
+  bool Initialize(int32 ring_size, bool is_sender,
                           int16 listen_port, int32 buffer_size=2048);
   void Finalize();
 
@@ -32,7 +33,7 @@ class ZmqCommunicator : public Communicator {
   // Return:
   // > 0 : bytes send
   // - 1 : error
-  virtual int32 Send(int32 dst_id, const char* const message, int32 len);
+  int32 Send(int32 dst_id, const char* const message, int32 len);
   int32 Send(int32 dst_id, const std::string& message);
 
   // Receive a message from any node
@@ -41,17 +42,17 @@ class ZmqCommunicator : public Communicator {
   // - 1 : error
   int32 Receive(char* message, const int32 max_size);
   int32 Receive(std::string* message);
-  
+
   // Function for adder
   static void* Produce(void* arg);
   // Function for fetcher
   static void* Consume(void* arg);
-  
+
   // Add an <id, addr> to the id_to_addr_
   bool AddIdAddr(int32 id, string addr);
   // Delete an <id, addr> from id_to_addr_
   bool DeleteId(int32 id);
-  
+
  private:
   // Max size of a buffer block
   int32 buffer_size_;
@@ -68,4 +69,5 @@ class ZmqCommunicator : public Communicator {
 }  // namespace rpscc
 
 #endif  // SRC_COMMUNICATION_ZMQ_COMMUNICATOR_H_
+
 

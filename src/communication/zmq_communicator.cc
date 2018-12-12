@@ -5,12 +5,12 @@
 
 namespace rpscc {
 
-bool ZmqCommunicator::Initialize(int32 ring_size, bool is_sender, 
+bool ZmqCommunicator::Initialize(int32 ring_size, bool is_sender,
                             int16 listenport, int32 buffer_size) {
   fifo_ring_.Initialize(ring_size);
   send_recv_.Initialize(is_sender, listenport);
   buffer_size_ = buffer_size;
-  
+
   if (is_sender) {
     printf("Is sender\n");
     pthread_create(&add_fetch_, NULL, Consume, (void*)this);
@@ -18,14 +18,14 @@ bool ZmqCommunicator::Initialize(int32 ring_size, bool is_sender,
     printf("Is receiver\n");
     pthread_create(&add_fetch_, NULL, Produce, (void*)this);
   }
-  
+
   return true;
 }
 void ZmqCommunicator::Finalize() {
   return;
 }
 
-int32 ZmqCommunicator::Send(int32 dst_id, const char* const message, 
+int32 ZmqCommunicator::Send(int32 dst_id, const char* const message,
                             int32 len) {
   char mix_message[buffer_size_];
   snprintf(mix_message, buffer_size_, "%d,%s", dst_id, message);
@@ -37,7 +37,7 @@ int32 ZmqCommunicator::Send(int32 dst_id, const char* const message,
   }
   fifo_ring_.Add(mix_message, len);
   printf("Add: %s, %d\n", mix_message, len);
-  return len;                       
+  return len;
 }
 int32 ZmqCommunicator::Send(int32 dst_id, const std::string& message) {
   int len = Send(dst_id, message.c_str(), message.size());
@@ -62,7 +62,7 @@ void* ZmqCommunicator::Produce(void* arg) {
   static char* message = new char[zc->buffer_size_];
   static int32 len;
   printf("Start receiving.\n");
-  
+
   while (1) {
     len = zc->send_recv_.Receive(message, zc->buffer_size_);
     zc->fifo_ring_.Add(message, len);
@@ -76,7 +76,7 @@ void* ZmqCommunicator::Consume(void* arg) {
   static char *message = new char[zc->buffer_size_];
   static int32 len;
   static int32 dst_id;
-  
+
   while (1) {
     // It is necessary for sender to push its dst_id in the message,
     // because the send_recv_ should know the dst_id to send message.
@@ -127,3 +127,4 @@ bool ZmqCommunicator::DeleteId(int32 id) {
 }
 
 }  // namespace rpscc
+
