@@ -15,6 +15,7 @@ namespace rpscc {
 // communicators, such as MPI, ZMQ or unix socket.
 class Communicator {
  public:
+  Communicator() {}
   virtual ~Communicator() {}
   virtual void Finalize() = 0;
 
