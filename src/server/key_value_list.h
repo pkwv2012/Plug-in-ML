@@ -14,7 +14,7 @@ namespace rpscc {
 class KeyValueList {
  public:
   KeyValueList() {
-    length = 0;
+    length_ = 0;
   }
 
   inline void AddPair(uint32 key, float value);
@@ -23,10 +23,10 @@ class KeyValueList {
   inline uint32 Length();
 
  private:
-  uint32 length;
+  uint32 length_;
 
-  std::vector<uint32> keys;
-  std::vector<float> parameters;
+  std::vector<uint32> keys_;
+  std::vector<float> parameters_;
 };
 
 }  // namespace rpscc

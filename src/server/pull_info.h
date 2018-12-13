@@ -13,16 +13,24 @@ namespace rpscc {
 class PullInfo {
  public:
   PullInfo() {
-    length = 0;
+    length_ = 0;
+    id_ = 0;
   }
   inline uint32 Length();
   inline void AddKey(uint32 key);
   inline uint32 Key(uint32 index);
+  inline uint32 get_id() {
+    return id_;
+  }
+  inline void set_id(uint32 id) {
+    id_ = id;
+  }
 
  private:
-  uint32 length;
+  uint32 length_;
+  uint32 id_;
 
-  std::vector<uint32> keys;
+  std::vector<uint32> keys_;
 };
 
 }  // namespace rpscc

@@ -5,8 +5,10 @@
 
 #include <deque>
 #include <queue>
+#include <string>
 #include <vector>
 
+#include "/src/communication/zmq_communicator.h"
 #include "/src/server/key_value_list.h"
 #include "/src/server/pull_info.h"
 #include "/src/util/common.h"
@@ -31,19 +33,26 @@ class Server {
   void Start();
 
  private:
-  uint32 server_id;
-  uint32 start_key;
-  uint32 parameter_length;
-  uint32 consistency_bound;
-  uint32 bottom_version;
-  uint32 agent_num;
+  std::unique_ptr<Communicator> sender_;
+  std::unique_ptr<Communicator> receiver_;
 
-  std:vecotr<float> parameters;
-  std:vector<std:queue<std:unique_ptr<KeyValueList> > > version_buffer
-  std:deque<uint32> finish_count;
-  std:queue<PullInfo> pull_request;
+  std::string local_ip_;
+  uint32 local_id_;
+  uint32 start_key_;
+  uint32 parameter_length_;
+  uint32 consistency_bound_;
+  uint32 bottom_version_;
+  uint32 agent_num_;
+  uint32 server_num_;
 
-  void ResponseAll();
+  std::vector<std::string> server_ips_;
+  std::vector<uint32> server_ids_;
+  std::vector<float> parameters_;
+  std::vector<std::queue<std::unique_ptr<KeyValueList> > > version_buffer_
+  std::deque<uint32> finish_count_;
+  std::queue<PullInfo> pull_request_;
+
+  bool ResponseAll();
   void UpdateParameter();
 };
 

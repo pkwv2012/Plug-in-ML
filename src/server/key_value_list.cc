@@ -7,21 +7,21 @@ namespace rpscc {
 
 // Everytime only one key-value pair is added to their respective vector
 inline void KeyValueList::AddPair(uint32 key, float value) {
-  keys.push_back(key);
-  values.push_back(value);
-  length++;
+  keys_.push_back(key);
+  values_.push_back(value);
+  length_++;
 }
 
 inline uint32 KeyValueList::Key(uint32 index) {
-  return keys[index];
+  return keys_[index];
 }
 
 inline float KeyValueList::Value(uint32 index) {
-  return values[index];
+  return values_[index];
 }
 
 inline uint32 KeyValueList::Length() {
-  return length;
+  return length_;
 }
 
 }  // namespace rpscc
