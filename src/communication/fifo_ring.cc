@@ -23,30 +23,31 @@ namespace rpscc {
   }
   int32 FifoRing::Add(const char* const message, int32 len) {
     sem_wait(&empty_sem_);
-    
+
     ring_[produce_point_] = new char[len];
     memcpy(ring_[produce_point_], message, len);
     data_sizes_[produce_point_] = len;
-    
+
     sem_post(&full_sem_);
     produce_point_++;
     produce_point_ %= ring_size_;
-    
+
     return len;
   }
   int32 FifoRing::Fetch(char* message, const int32 max_size) {
     sem_wait(&full_sem_);
-    
+
     if (ring_[consume_point_] == NULL) {
       return -1;
     }
     int32 len = data_sizes_[consume_point_];
     memcpy(message, ring_[consume_point_], len);
-    
+
     sem_post(&empty_sem_);
     consume_point_++;
     consume_point_ %= ring_size_;
     return len;
   }
-  
+
 }  // namespace rpscc
+

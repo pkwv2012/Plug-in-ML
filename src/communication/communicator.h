@@ -40,10 +40,16 @@ class Communicator {
   // - 1 : error
   virtual int32 Receive(char* message, const int max_size) = 0;
   virtual int32 Receive(std::string* message) = 0;
+
+  // Add an <id, addr> to the id_to_addr_
+  virtual bool AddIdAddr(int32 id, std::string addr);
+  // Delete an <id, addr> from id_to_addr_
+  virtual bool DeleteId(int32 id);
 };
 
 }  // namespace rpscc
 
 #endif  // SRC_COMMUNICATION_COMMUNICATOR_H_
+
 
 

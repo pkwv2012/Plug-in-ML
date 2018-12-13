@@ -27,7 +27,7 @@ bool ZmqSendRecv::Initialize(bool is_sender, int16 listen_port) {
 }
 void ZmqSendRecv::Finalize() {
   if (is_sender_) {
-    map<string, void*>::iterator i;
+    std::map<std::string, void*>::iterator i;
     for (i = mapper_.begin(); i != mapper_.end(); i++) {
       zmq_close(i->second);
     }
@@ -38,10 +38,10 @@ void ZmqSendRecv::Finalize() {
   zmq_ctx_destroy(context_);
 }
 
-int32 ZmqSendRecv::Send(string dst_addr, const char* const message,
+int32 ZmqSendRecv::Send(std::string dst_addr, const char* const message,
                       int len) {
   // If there is not a open socket for assigend address, create one socket
-  map<string, void*>::iterator iter = mapper_.find(dst_addr);
+  std::map<std::string, void*>::iterator iter = mapper_.find(dst_addr);
   if (iter == mapper_.end()) {
     printf("Create a new socket.\n");
     void *sender_ = zmq_socket(context_, ZMQ_PUSH);

@@ -12,9 +12,6 @@
 
 #include "src/util/common.h"
 
-using std::string;
-using std::map;
-
 namespace rpscc {
 
 // ZmqSendRecv is a simple wrapper around zmq.
@@ -40,7 +37,7 @@ class ZmqSendRecv {
   // Send data using zmq
   // Parameter: dst_addr is in the form of <ip>:<port>
   // Return : bytes send to remote
-  int Send(string dst_addr, const char* const message, int len);
+  int Send(std:string dst_addr, const char* const message, int len);
 
   // Receive data using zmq
   // Return : bytes received
@@ -56,7 +53,7 @@ class ZmqSendRecv {
   // Number of sending sockets
   int32 num_senders_;
   // Map for sender, each pair is < (<ip>:<port>), (<sender_>) >
-  map<string, void*> mapper_;
+  std::map<std::string, void*> mapper_;
 };
 
 }  // namespace rpscc

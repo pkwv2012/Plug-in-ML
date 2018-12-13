@@ -1,8 +1,8 @@
 // Copyright 2018 The RPSCC Authors. All Rights Reserved.
 // Author : Chenbin Zhang (zcbin@pku.edu.cn)
 
-#ifndef SRC_COMMUNICATION_FIFORING_H_
-#define SRC_COMMUNICATION_FIFORING_H_
+#ifndef SRC_COMMUNICATION_FIFO_RING_H_
+#define SRC_COMMUNICATION_FIFO_RING_H_
 
 #include <pthread.h>
 #include <semaphore.h>
@@ -41,13 +41,14 @@ class FifoRing {
   int32 produce_point_;
   int32 consume_point_;
   // empty_sem_ is used for consumer, which indicates that whether there is
-  // data in the ring. 
+  // data in the ring.
   sem_t empty_sem_;
   // full_sem_ is used for producer, which indicates that whether there is
-  // space in the ring. 
+  // space in the ring.
   sem_t full_sem_;
 };
 
 }  // namespace rpscc
 
-#endif  // SRC_COMMUNICATION_FIFORING_H_
+#endif  // SRC_COMMUNICATION_FIFO_RING_H_
+

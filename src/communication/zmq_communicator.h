@@ -49,7 +49,7 @@ class ZmqCommunicator : public Communicator {
   static void* Consume(void* arg);
 
   // Add an <id, addr> to the id_to_addr_
-  bool AddIdAddr(int32 id, string addr);
+  bool AddIdAddr(int32 id, std::string addr);
   // Delete an <id, addr> from id_to_addr_
   bool DeleteId(int32 id);
 
@@ -63,7 +63,7 @@ class ZmqCommunicator : public Communicator {
   // Adder or fetcher thread for the fifo ring.
   pthread_t add_fetch_;
   // Map from <node id> to <ip>:<port>
-  map<int32, string> id_to_addr_;
+  std::map<int32, std::string> id_to_addr_;
 };
 
 }  // namespace rpscc
