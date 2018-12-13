@@ -19,11 +19,12 @@ class ZmqCommunicator : public Communicator {
   virtual ~ZmqCommunicator() {}
 
   // Initialize the communicator
+  // The buffer_size is used in receiving.
   // Return:
   // true : Init successfully
   // false : Init failed
-  bool Initialize(int32 ring_size, bool is_sender, 
-                  int16 listen_port, int32 buffer_size);
+  virtual bool Initialize(int32 ring_size, bool is_sender,
+                          int16 listen_port, int32 buffer_size=2048);
   void Finalize();
 
   // Send a message from one node to another node,
@@ -31,7 +32,7 @@ class ZmqCommunicator : public Communicator {
   // Return:
   // > 0 : bytes send
   // - 1 : error
-  int32 Send(int32 dst_id, const char* const message, int32 len);
+  virtual int32 Send(int32 dst_id, const char* const message, int32 len);
   int32 Send(int32 dst_id, const std::string& message);
 
   // Receive a message from any node

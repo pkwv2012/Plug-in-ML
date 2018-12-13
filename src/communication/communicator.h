@@ -19,6 +19,14 @@ class Communicator {
   virtual ~Communicator() {}
   virtual void Finalize() = 0;
 
+  // Initialize the communicator
+  // The buffer_size is used in receiving.
+  // Return:
+  // true : Init successfully
+  // false : Init failed
+  virtual bool Initialize(int32 ring_size, bool is_sender,
+                  int16 listen_port, int32 buffer_size=2048) = 0;
+
   // Send a message from one node to another node,
   // Return:
   // > 0 : bytes send

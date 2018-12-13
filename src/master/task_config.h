@@ -17,6 +17,8 @@ class TaskConfig {
  public:
   TaskConfig();
 
+  void Initialize(const std::string& config_file);
+
   // convert to ConfigMessage
   Message_ConfigMessage* ToMessage();
 

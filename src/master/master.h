@@ -8,6 +8,7 @@
 
 #include <mutex>
 
+#include "src/communication/communicator.h"
 #include "src/message/message.pb.h"
 #include "src/master/task_config.h"
 
@@ -16,6 +17,8 @@ namespace rpscc {
 class Master {
  public:
   Master();
+
+  void Initialize(const int16& listen_port=12018);
 
   // wait for servers & agents ready
   void WaitForClusterReady();
@@ -27,6 +30,8 @@ class Master {
  private:
   std::mutex config_mutex_;
   TaskConfig config_;
+  Communicator* sender_;
+  Communicator* receiver_;
 };
 
 }  // namespace rpscc

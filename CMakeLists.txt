@@ -14,5 +14,6 @@ include_directories(
         "${PROJECT_SOURCE_DIR}"
 )
 
+add_subdirectory(src/communication)
 add_subdirectory(src/master)
 add_subdirectory(src/message)
