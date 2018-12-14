@@ -36,7 +36,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
 
 #include "gflags/gflags.h"
 
-#include "src/base/logging.h"
+/*
+//#include "src/base/logging.h"
 
 //-----------------------------------------------------------------------------
 //
@@ -137,6 +138,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
     CHECK_LE((a), (b)+(margin));                \
     CHECK_GE((a), (b)-(margin));                \
   } while (0)
+
+  */
 
 //-----------------------------------------------------------------------------
 //

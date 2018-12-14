@@ -8,13 +8,14 @@ cmake_minimum_required(VERSION 3.9)
 include("FindProtobuf")
 find_package(Protobuf REQUIRED)
 
-add_definitions("-std=c++11")
+add_definitions("-std=c++14")
 
 include_directories(
         "${PROJECT_SOURCE_DIR}"
 )
 
+add_subdirectory(src/communication)
 add_subdirectory(src/master)
 add_subdirectory(src/message)
-add_subdirectory(src/node)
 add_subdirectory(src/channel)
+add_subdirectory(src/node)
