@@ -16,7 +16,7 @@ class Worker {
 
   ~Worker() {}
 
-  bool Initialize(int32 worker_id);
+  bool Initialize();
   bool Start();
   void Terminate();
 

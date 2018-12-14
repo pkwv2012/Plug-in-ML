@@ -13,17 +13,18 @@ class Agent {
   Agent() {}
   ~Agent() {}
 
-  bool Initialize();
+  bool Initialize(int32 agent_id);
   bool Start();
-  bool Terminate();
+  void Terminate();
 
  private:
   int32 agent_id_;
 //sender
 //reciver
-  Fifo fifo_reade_;
+  Fifo fifo_reader_;
+  bool AgentWork();
 };
 
-}
+}  // namespace rpscc
 
 #endif  // SRC_NODE_AGENT_H_

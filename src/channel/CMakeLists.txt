@@ -1,0 +1,1 @@
+add_executable(fifo fifo.cc fifo.h)

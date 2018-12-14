@@ -16,3 +16,5 @@ include_directories(
 
 add_subdirectory(src/master)
 add_subdirectory(src/message)
+add_subdirectory(src/node)
+add_subdirectory(src/channel)

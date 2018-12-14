@@ -12,21 +12,19 @@ namespace rpscc {
 
 bool Worker::Initialize(int32 worker_id) {
   worker_id_ = worker_id;
-  std::string filename = "fifo.worker." + to_string(worker_id_);
-  unlink(filename.c_str());
-  if (mkfifo(filename, 0666) != 0) {
-    LOG(FATAL) << "Create fifo file failed.";
-  }
+  std::string filename = "/tmp/fifo.agentworker";
   fifo_writer_.Initialize(filename, false);
   fifo_writer_.Open();
   live_ = true;
 }
 
 bool Worker::Start() {
-  LOG(INFO) << "Worker " << worker_id_ << " start.";
+  //LOG(INFO) << "Worker " << worker_id_ << " start.";
   if (!DoJobs()) {
-    LOG(ERROR) << "Worker work failed.";
+    //LOG(ERROR) << "Worker work failed.";
+    return false;
   }
+  return true;
 }
 
 void Worker::Terminate() {
