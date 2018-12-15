@@ -1,0 +1,3 @@
+[submodule "thrid_party/gflags"]
+	path = thrid_party/gflags
+	url = https://github.com/gflags/gflags.git
