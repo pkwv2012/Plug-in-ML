@@ -4,14 +4,15 @@
 #define SRC_SERVER_SERVER_H_
 
 #include <deque>
+#include <map>
 #include <queue>
 #include <string>
 #include <vector>
 
-#include "/src/communication/zmq_communicator.h"
-#include "/src/server/key_value_list.h"
-#include "/src/server/pull_info.h"
-#include "/src/util/common.h"
+#include "src/communication/zmq_communicator.h"
+#include "src/server/key_value_list.h"
+#include "src/server/pull_info.h"
+#include "src/util/common.h"
 
 namespace rpscc {
 
@@ -48,9 +49,11 @@ class Server {
   std::vector<std::string> server_ips_;
   std::vector<uint32> server_ids_;
   std::vector<float> parameters_;
-  std::vector<std::queue<std::unique_ptr<KeyValueList> > > version_buffer_
+  std::vector<std::queue<KeyValueList> > version_buffer_
   std::deque<uint32> finish_count_;
   std::queue<PullInfo> pull_request_;
+  std::map<uint32, uint32> id_to_index_;
+
 
   bool ResponseAll();
   void UpdateParameter();

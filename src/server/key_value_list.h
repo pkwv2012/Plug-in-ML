@@ -5,7 +5,7 @@
 
 #include <vector>
 
-#include "/src/util/common.h"
+#include "src/util/common.h"
 
 namespace rpscc {
 
