@@ -55,8 +55,10 @@ class Server {
   std::map<uint32, uint32> id_to_index_;
 
 
-  bool ResponseAll();
+  bool RespondToAll();
   void UpdateParameter();
+  void ServePull(uint32 sender_id, Message_RequestMessage &request);
+  void ServePush(uint32 sender_id, Message_RequestMessage &request);
 };
 
 }  // namespace rpscc
