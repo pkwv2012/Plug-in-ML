@@ -12,9 +12,9 @@ void Master::WaitForClusterReady() {
 }
 
 void Master::Initialize(const int16 &listen_port) {
-  this->sender_ = new ZmqCommunicator();
+  this->sender_.reset(new ZmqCommunicator());
   this->sender_->Initialize(16, true, listen_port);
-  this->receiver_ = new ZmqCommunicator();
+  this->receiver_.reset(ZmqCommunicator());
   this->receiver_->Initialize(16, false, listen_port);
 }
 
