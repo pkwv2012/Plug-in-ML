@@ -27,7 +27,7 @@ bool Server::Initialize() {
   std::string reg_str;
   std::string config_str;
   reg_msg.set_ip(local_ip_);
-  msg_send.set_message_type(Message_MessageType_register);
+  msg_send.set_message_type(Message_MessageType_register_);
   msg_send.set_recv_id(0);
   msg_send.set_send_id(-1);
   msg_send.set_allocated_register_msg(&reg_msg);
@@ -71,6 +71,10 @@ bool Server::Initialize() {
     return false;
   }
 
+  // Initialize map from worker ID to version buffer index
+  for (uint32 i = 0; i < agent_num; ++i)
+    id_to_index_[worker_id(i)] = i;
+
   // By default, all parameters are initialized to be zero
   for (uint32 i = 0; i < parameter_length_; ++i)
     parameters_.push_back(0.0f);
@@ -89,7 +93,7 @@ bool Server::Initialize() {
 
 // ResponseAll is invoked once an update is applied to the parameters.
 // The server use this function to reply to the blocked pull requests.
-bool Server::ResponseAll() {
+bool Server::RespondToAll() {
   while (pull_request_.empty() == false) {
     std::string reply_str;
     PullInfo request = pull_request_.pop();
@@ -138,13 +142,96 @@ void Server::Start() {
     Message msg_recv();
     msg_recv.ParseFromString(recv_str);
     uint32 sender_id = msg_recv.send_id();
+
     if (msg_recv.message_type() == Message_MessageType_request) {
       Message_RequestMessage request = msg_recv.request_msg();
       // Push request:
       if (request.request_type()
-          == Message_RequestMessage_RequestType_key_value) {
-        
+        == Message_RequestMessage_RequestType_key_value) {
+        ServePush(sender_id, request);
       }
+      // Pull request:
+      else if (request.request_type()
+        == Message_RequestMessage_RequestType_key) {
+        ServePull(sender_id, request);
+      }
+    }
+  }
+}
+
+// Serve push request. Since consistency will be handled by ServePull(),
+// we can always insert the push update in the queue.
+// If a round of version update is finished after the push, UpdateParameter()
+// and RespondToAll() will be called to return the new version of parameters
+// to the blocked workers.
+void Server::ServePush(uint32 sender_id, Message_RequestMessage &request) {
+  if (id_to_index_.find(sender_id) == id_to_index_.end()) {
+    /* handle */
+    return;
+  }
+  finish_count_[version_buffer_[id_to_index_[sender_id]].size()]++;
+  KeyValueList worker_update();
+  for (uint32 i = 0; i < request.keys_size(); ++i)
+    worker_update.AddPair(request.keys(i), request.values(i));
+  version_buffer_[id_to_index_[sender_id]].push(worker_update);
+
+  // Update of the bottom version is done
+  if (finish_count_[0] == agent_num_) {
+    finish_count_.pop_front();
+    finish_count_.push_back(0);
+    UpdateParameter();
+    RespondToAll();
+  }
+}
+
+// ServePull() will handle version consistency by checking the number of
+// updates that the worker has already committed but is not yet processed by
+// the server. If the number of updates in version_buffer is too large, the
+// pull request will be blocked.
+void Server::ServePull(uint32 sender_id, Message_RequestMessage &request) {
+  if (id_to_index_.find(sender_id) == id_to_index_.end()) {
+    /* handle */
+    continue;
+  }
+  // Blocked when enough update is pushed but not yet processed
+  // A block message will be sent to the sender agent
+  if (version_buffer_[id_to_index_[sender_id]].size()
+    >= consistency_bound_) {
+    PullInfo blocked_request();
+    for (uint32 i = 0; i < request.keys_size(); ++i)
+      blocked_request.AddKey(request.keys(i));
+    pull_request_.push(blocked_request);
+
+    std::string send_str;
+    Message_RequestMessage block_msg();
+    Message msg_send();
+    block_msg.set_request_type(Message_RequestMessage_RequestType_block);
+    msg_send.set_message_type(Message_MessageType_request);
+    msg_send.set_allocated_request_msg(block_msg);
+    msg_send.set_send_id(local_id_);
+    msg_send.set_recv_id(sender_id);
+    msg_send.SerializeToString(&send_str);
+    if (sender_->Send(sender_id, send_str) == -1) {
+      /* handle */
+    }
+  }
+  else {
+    std::string reply_str;
+    Message msg_send();
+    Message_RequestMessage reply_msg();
+    reply_msg.set_request_type(
+      Message_RequestMessage_RequestType_key_value);
+    for (uint32 i = 0; i < request.keys_size(); ++i) {
+      reply_msg.add_keys(request.keys(i));
+      reply_msg.add_values(parameters[request.keys(i) - start_key_]);
+    }
+    msg_send.set_message_type(Message_MessageType_request);
+    msg_send.set_allocated_request_msg(reply_msg);
+    msg_send.set_send_id(local_id_);
+    msg_send.set_recv_id(sender_id);
+    msg_send.SerializeToString(&reply_str);
+    if (sender_->Send(sender_id, reply_str) == -1) {
+      /* handle */
     }
   }
 }
