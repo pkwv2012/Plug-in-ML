@@ -10,8 +10,12 @@ find_package(Protobuf REQUIRED)
 
 add_definitions("-std=c++14")
 
+# How to turn on the multi-thread flag of Gflags?
+add_subdirectory(thrid_party/gflags)
+
 include_directories(
         "${PROJECT_SOURCE_DIR}"
+        "thrid_party"
 )
 
 add_subdirectory(src/communication)
