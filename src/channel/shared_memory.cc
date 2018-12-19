@@ -1,9 +1,9 @@
 // Copyright (c) 2018 The RPSCC Authors. All rights reserved.
 // Author : Zhen Lee (lz.askey@gmail.com)
 
-#include "src/channel/shared_memory.h"
-
 #include <iostream>
+
+#include "src/channel/shared_memory.h"
 
 namespace rpscc {
 

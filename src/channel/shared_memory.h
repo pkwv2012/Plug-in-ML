@@ -1,8 +1,8 @@
 // Copyright (c) 2018 The RPSCC Authors. All rights reserved.
 // Author : Zhen Lee (lz.askey@gmail.com)
 
-#ifndef RPSCC_SHAREDMEMORY_H
-#define RPSCC_SHAREDMEMORY_H
+#ifndef RPSCC_SHARED_MEMORY_H
+#define RPSCC_SHARED_MEMORY_H
 
 #include <semaphore.h>
 #include <sys/mman.h>
@@ -43,4 +43,4 @@ class SharedMemory {
 
 }
 
-#endif //RPSCC_SHAREDMEMORY_H
+#endif //RPSCC_SHARED_MEMORY_H

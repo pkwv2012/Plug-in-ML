@@ -67,8 +67,8 @@ class Master {
  private:
   std::mutex config_mutex_;
   TaskConfig config_;
-  Communicator* sender_;
-  Communicator* receiver_;
+  std::unique_ptr<Communicator> sender_;
+  std::unique_ptr<Communicator> receiver_;
 };
 
 }  // namespace rpscc

@@ -1,7 +1,7 @@
 // Copyright 2018 The RPSCC Authors. All Rights Reserved.
 // Author : Xu Song (sazel.sekibanki@gmail.com)
 
-#include "/src/server/key_value_list.h"
+#include "src/server/key_value_list.h"
 
 namespace rpscc {
 

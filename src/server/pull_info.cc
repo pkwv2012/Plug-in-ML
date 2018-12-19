@@ -1,7 +1,7 @@
 // Copyright 2018 The RPSCC Authors. All Rights Reserved.
 // Author : Xu Song (sazel.sekibanki@gmail.com)
 
-#include "/src/server/pull_info.h"
+#include "src/server/pull_info.h"
 
 namespace rpscc {
 
