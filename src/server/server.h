@@ -37,7 +37,7 @@ class Server {
   std::unique_ptr<Communicator> sender_;
   std::unique_ptr<Communicator> receiver_;
 
-  std::string local_ip_;
+  std::string local_address_;
   uint32 local_id_;
   uint32 start_key_;
   uint32 parameter_length_;
