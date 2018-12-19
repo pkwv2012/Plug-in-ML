@@ -75,9 +75,6 @@ bool Agent::Initialize() {
   }
   partition_.Initialize(part_vec[part_vec.size() - 1], server_num_, part_vec);
   
-  // Initialize reader
-  // Start recv working thread
-  
   return true;
 }
 
@@ -95,7 +92,9 @@ bool Agent::Start() {
   return true;
 }
 
-bool Agent::AgentWork() {}
+bool Agent::AgentWork() {
+  
+}
 
 bool Agent::Push() {
   
@@ -103,9 +102,5 @@ bool Agent::Push() {
 
 bool Agent::Pull() {
 }
-
-static void Agent::ReceiveWork(Agent* pagent) {}
-
-
 
 }  // namespace rpscc

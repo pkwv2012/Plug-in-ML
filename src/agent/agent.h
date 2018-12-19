@@ -5,12 +5,13 @@
 #define SRC_AGENT_AGENT_H_
 
 #include <stdio.h>
-#include <pthread.h>
 
 #include <memory>
 #include <string>
 
 #include "src/agent/partition.h"
+#include "src/channel/fifo.h"
+#include "src/channel/sharedmemory.h"
 #include "src/communication/communicator.h"
 #include "src/util/common.h"
 
@@ -58,15 +59,12 @@ class Agent {
   File update_channel_;
   // in-memory file to store the parameters
   File parameter_channel_:
-  // Receive thread, receive message from worker
-  pthread_t recv_thread_;
   // Partition message to server
   Partition partition_;
   
   bool AgentWork();
   void Push();
   void Pull();
-  static void ReceiveWork(Agent* pagent);
   
 };
 
