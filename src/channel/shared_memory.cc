@@ -1,7 +1,9 @@
 // Copyright (c) 2018 The RPSCC Authors. All rights reserved.
 // Author : Zhen Lee (lz.askey@gmail.com)
 
-#include "src/channel/sharedmemory.h"
+#include "src/channel/shared_memory.h"
+
+#include <iostream>
 
 namespace rpscc {
 
@@ -17,16 +19,19 @@ void SharedMemory::Initialize(const char *ipc_name) {
   close(fd);
 }
 
-shmstruct* SharedMemory::Read() {
+shmstruct SharedMemory::Read() {
   // read
+//  memcpy(data, shared_data_, sizeof(*shared_data_));
   shmstruct data;
   data.keys = shared_data_->keys;
   data.values = shared_data_->values;
-  return &data;
+  return data;
 }
 
 void SharedMemory::Write(shmstruct* data) {
-//  write
+//  memcpy(shared_data_, data, sizeof(data));
+//  *shared_data_ = data;
+//  memcpy(shared_data_, data, sizeof(*data));
   shared_data_->keys = data->keys;
   shared_data_->values = data->values;
 }
