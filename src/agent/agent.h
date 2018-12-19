@@ -7,6 +7,9 @@
 #include <stdio.h>
 #include <pthread.h>
 
+#include <memory>
+#include <string>
+
 #include "src/agent/partition.h"
 #include "src/communication/communicator.h"
 #include "src/util/common.h"
@@ -38,11 +41,24 @@ class Agent {
   bool Start();
   
  private:
+  // The Agent's information, local_port_ indicate the port for which this 
+  // agent is listening.
+  int32 local_id_;
+  std::string local_ip_;
+  std::string listen_port_;
+  // Global information about rpscc
+  int32 agent_num_;
+  int32 server_num_;
+  
+  // Sender and Receiver for agent.
+  std::unique_ptr<Communicator> sender_;
+  std::unique_ptr<Communicator> receiver_;
+  
   // in-memory file to store the updates
   File update_channel_;
   // in-memory file to store the parameters
   File parameter_channel_:
-  // Receive thread, receive message from server
+  // Receive thread, receive message from worker
   pthread_t recv_thread_;
   // Partition message to server
   Partition partition_;
@@ -52,8 +68,6 @@ class Agent {
   void Pull();
   static void ReceiveWork(Agent* pagent);
   
-  void GetUpdateChannelFile();
-  void GetParameterChannelFile();
 };
 
 }  // namespace rpscc
