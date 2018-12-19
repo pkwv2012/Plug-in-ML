@@ -4,20 +4,38 @@
 #ifndef RPSCC_SHAREDMEMORY_H
 #define RPSCC_SHAREDMEMORY_H
 
+#include <semaphore.h>
+#include <sys/mman.h>
+#include <unistd.h>
+
+#include <vector>
+
+#include "src/util/common.h"
+#include "src/channel/fifo.h"
+
+#define FILE_MODE (S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)
+
 namespace rpscc {
 
+// the struct to store data;
+struct shmstruct {
+  std::vector<int64> keys;
+  std::vector<float32> values;
+};
+
+// a shared memory with fifo for write and read control.
 class SharedMemory {
  public:
   SharedMemory() {}
   ~SharedMemory() {}
 
-  bool Initialize(char* ipc_name, bool is_reader);
+  void Initialize(const char* ipc_name_read);
 
-  void Open();
+  void Write(shmstruct* data);
 
-  void Write();
-
-  void Read();
+  shmstruct* Read();
+ private:
+  struct shmstruct* shared_data_;
 };
 
 }

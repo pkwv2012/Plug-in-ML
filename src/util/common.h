@@ -193,6 +193,9 @@ typedef uint8_t  uint8;
 typedef uint16_t uint16;
 typedef uint32_t uint32;
 typedef uint64_t uint64;
+
+typedef float float32;
+typedef double float64;
 #endif
 
 static const int32 kInt32Max = 0x7FFFFFFF;
