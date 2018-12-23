@@ -12,16 +12,20 @@
 
 namespace rpscc {
 
-
-bool Agent::Initialize() {
-  // Initialize sender
+bool Agent::Initialize(std::string para_fifo_name, 
+                       std::string grad_fifo_name,
+                       std::string para_memory_name,
+                       std::string grad_memory_name,
+                       int32 shared_memory_size) {
+  // 1.Initialize sender
   sender_.reset(new ZmqCommunicator());
   if (sender_.get() == NULL) {
     printf("Initialize sender failed.");
     return false;
   }
   sender_->Initialize(/* ring_size */, true, /* listen_port */);
-  // Initialize receiver
+  
+  // 2.Initialize receiver
   receiver_.reset(new ZmqCommunicator());
   if (receiver_.get() == NULL) {
     printf("Initialize receiver failed.");
@@ -29,7 +33,8 @@ bool Agent::Initialize() {
   }
   receiver_->Initialize(/* ring_size */, false, /* listen_port */);
   
-  // Send this agent's local_ip_ to master, and receive config information
+  // 3.Interact with master
+  // 3_1.Send this agent's local_ip_ to master, and receive config information
   local_ip_ = ""; /* find a way to get agent ip */
   listen_port_ = "5555";
   Message msg_send;
@@ -57,13 +62,12 @@ bool Agent::Initialize() {
   msg_recv.ParseFromString(config_str);
   config_msg = msg_recv.config_msg();
   
-  // Initialization of agent fields
+  // 3_2.Initialization of agent fields
   local_id_ = msg_recv.recv_id();
   agent_num_ = config_msg.worker_num();
   server_num_ = config_msg.server_num();
   
-  // Add <server_id, server_addr> to the sender_'s <Id, Addr> map.
-  // Initialize the partition_.
+  // 3_3.Add <server_id, server_addr> pairs to the sender_'s <Id, Addr> map.
   for (int32 i = 0; i < server_num_; i++) {
     std::string server_i_ip = config_msg.server_ip(i);
     int32 server_i_id = config_msg.server_id(i);
@@ -73,7 +77,29 @@ bool Agent::Initialize() {
   for (int32 i = 0; i < server_num_ + 1; i++) {
     part_vec.push_back(config_msg.partition(i));
   }
+  
+  // 3_4.Initialize the partition_.
   partition_.Initialize(part_vec[part_vec.size() - 1], server_num_, part_vec);
+  
+  // 4.Initialize the fifo and shared memory
+  para_fifo_name_ = para_fifo_name;
+  grad_fifo_name_ = grad_fifo_name;
+  para_memory_name_ = para_memory_name;
+  grad_memory_name_ = grad_memory_name;
+  shared_memory_size_ = shared_memory_size;
+  
+  int32 fd = shm_open(para_memory_name_.c_str(), O_RDWR | O_CREAT, FILE_MODE);
+  ftruncate(fd, sizeof(struct shmstruct));
+  close(fd);
+  fd = shm_open(grad_memory_name_.c_str(), O_RDWR | O_CREAT, FILE_MODE);
+  ftruncate(fd, sizeof(struct shmstruct));
+  close(fd);
+  
+  // Agent is reader for parameters and writer for gradients
+  para_fifo_.Initialize(para_fifo_name_, true);
+  grad_fifo_.Initialize(grad_fifo_name_, false);
+  para_memory_.Initialize(para_memory_name_.c_str());
+  grad_memory_.Initialzie(grad_memory_name_.c_str());
   
   return true;
 }
@@ -93,14 +119,18 @@ bool Agent::Start() {
 }
 
 bool Agent::AgentWork() {
-  
+  while (true) {
+    grad_fifo_.Wait();
+    
+  }
 }
 
 bool Agent::Push() {
-  
+    
 }
 
 bool Agent::Pull() {
+  
 }
 
 }  // namespace rpscc
