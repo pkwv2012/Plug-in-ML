@@ -19,11 +19,11 @@ namespace rpscc {
 
 // the struct to store data;
 struct shmstruct {
-//  int64 keys[1000];
-//  float32 values[1000];
-//  int size;
-  int64 keys;
-  float32 values;
+  int64 keys[100];
+  float32 values[100];
+  int size;
+//  int64 keys;
+//  float32 values;
 };
 
 // a shared memory with fifo for write and read control.
@@ -36,7 +36,7 @@ class SharedMemory {
 
   void Write(shmstruct* data);
 
-  shmstruct Read();
+  shmstruct* Read();
  private:
   struct shmstruct* shared_data_;
 };

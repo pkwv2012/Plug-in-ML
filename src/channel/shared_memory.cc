@@ -2,6 +2,7 @@
 // Author : Zhen Lee (lz.askey@gmail.com)
 
 #include <iostream>
+#include <algorithm>
 
 #include "src/channel/shared_memory.h"
 
@@ -13,27 +14,23 @@ void SharedMemory::Initialize(const char *ipc_name) {
 //  initialize the shared memory
   int fd = shm_open(px_ipc_name(ipc_name),
       O_RDWR | O_CREAT, FILE_MODE);
-  ftruncate(fd, sizeof(struct shmstruct));
+//  ftruncate(fd, sizeof(struct shmstruct));
   shared_data_ = (struct shmstruct*)mmap(NULL, sizeof(struct shmstruct),
       PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
   close(fd);
 }
 
-shmstruct SharedMemory::Read() {
+shmstruct* SharedMemory::Read() {
   // read
-//  memcpy(data, shared_data_, sizeof(*shared_data_));
-  shmstruct data;
-  data.keys = shared_data_->keys;
-  data.values = shared_data_->values;
-  return data;
+//  simple return the shared memory ptr.
+  return shared_data_;
 }
 
 void SharedMemory::Write(shmstruct* data) {
-//  memcpy(shared_data_, data, sizeof(data));
-//  *shared_data_ = data;
-//  memcpy(shared_data_, data, sizeof(*data));
-  shared_data_->keys = data->keys;
-  shared_data_->values = data->values;
+//  use copy function to copy the data.
+  std::copy(std::begin(data->values), std::end(data->values), std::begin(shared_data_->values));
+  std::copy(std::begin(data->keys), std::end(data->keys), std::begin(shared_data_->keys));
+  shared_data_->size = data->size;
 }
 
 // this function target to get a px_ipc_name more capable
