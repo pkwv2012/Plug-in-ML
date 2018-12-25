@@ -14,6 +14,10 @@ DEFINE_int32(bound, 0, "The definition of consistency.");
 namespace rpscc {
 
 void rpscc::TaskConfig::Initialize(const std::string &config_file) {
+  worker_num_ = FLAGS_worker_num;
+  server_num_ = FLAGS_server_num;
+  key_range_ = FLAGS_key_range;
+  bound_ = FLAGS_bound;
 
 }
 
