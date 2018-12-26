@@ -13,9 +13,12 @@ add_definitions("-std=c++14")
 # How to turn on the multi-thread flag of Gflags?
 add_subdirectory(thrid_party/gflags)
 
+add_subdirectory(thrid_party/gtest)
+
 include_directories(
         "${PROJECT_SOURCE_DIR}"
         "thrid_party"
+        "thrid_party/gtest/googletest/include"
 )
 
 add_subdirectory(src/communication)
