@@ -4,7 +4,9 @@
 #include <stdio.h>
 
 #include <algorithm>
+
 #include "src/agent/partition.h"
+#include "src/util/logging.h"
 
 namespace rpscc {
   

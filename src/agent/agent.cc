@@ -9,9 +9,13 @@
 #include "src/agent/agent.h"
 #include "src/communication/zmq_communicator.h"
 #include "src/message/message.pb.h"
-
+#include "src/util/logging.h"
 
 namespace rpscc {
+
+// Macro for getting the Agent's IP address
+DEFINE_string(net_interface, "", 
+              "Name of the net interface used by the node.");
 
 // This is a sorter for key list and value list stroed in the agent. During the
 // sorting, keys and values will keep thier relative positions.
@@ -55,7 +59,13 @@ bool Agent::Initialize(std::string para_fifo_name,
   
   // 3 Exchange messages with master
   // 3_1.Send this agent's local_ip_ to master, and receive config information
-  local_ip_ = ""; /* find a way to get agent ip */
+  std::string ip = "";
+  GetIP(FLAGS_net_interface, &ip);
+  if (ip == "") {
+    LOG(ERROR) << "Cannot find IP from the interface provided.";
+    return false;
+  }
+  local_ip_ = ip;
   listen_port_ = "5555";
   Message msg_send;
   Message msg_recv;
@@ -72,11 +82,11 @@ bool Agent::Initialize(std::string para_fifo_name,
   msg_send.set_allocated_register_msg(&reg_msg);
   msg_send.SerializeToString(&reg_str);
   if (sender_.Send(0, reg_str) == -1) {
-    printf("Cannot send register message to master\n");
+    LOG(ERROR) << "Cannot send register message to master";
     return false;
   }
   if (receiver_->Receive(&config_str) == -1) {
-    printf("Error in receiving message from master\n");
+    LOG(ERROR) << "Error in receiving message from master";
     return false;
   }
   msg_recv.ParseFromString(config_str);
@@ -138,7 +148,7 @@ bool Agent::Start() {
   para_fifo_.Open();
   grad_fifo_.Open();
   if (!AgentWork()) {
-    printf("Agent work failed.\n");
+    LOG(ERROR) << "Agent work failed.";
     return false;
   }
   return true;
@@ -194,7 +204,7 @@ bool Agent::Push() {
     msg_send.set_recv_id(server_id);
     msg_send.SerializeToString(&request_str);
     if (sender_->Send(server_id, request_str) == -1) {
-      printf("Cannot send push message to server:%d\n", server_id);
+      LOG(ERROR) << "Cannot send push message to server:" << server_id;
     }
     
     start = end;
@@ -235,7 +245,7 @@ bool Agent::Pull() {
     msg_send_recv.set_recv_id(server_id);
     msg_send_recv.SerializeToString(&msg_str);
     if (sender_->Send(server_id, msg_str) == -1) {
-      printf("Cannot send pull message to server:%d\n", server_id);
+      LOG(ERROR) << "Cannot send pull message to server:" << server_id;
     }
     
     start = end;
@@ -248,29 +258,29 @@ bool Agent::Pull() {
   parameters_.values.clear();
   while (!server_list.empty()) {
     if (receiver_->Receive(&msg_str) == -1) {
-      printf("Error in receiving message from servers\n");
+      LOG(ERROR) << "Error in receiving message from servers";
     } else {
       msg_send_recv.ParseFromString(msg_str);
       
       // Ignore wrong messages
       // Check the message type
       if (msg_send_recv.message_type() != Message_MessageType_request) {
-        printf("Agent receives a message with wrong message_type\n");
+        LOG(ERROR) << "Agent receives a message with wrong message_type";
         continue;
       }
       // Check the message content
       if (!msg_send_recv.has_request_message()) {
-        printf("Agent receives a message without request_message\n");
+        LOG(ERROR) << "Agent receives a message without request_message";
         continue;
       }
       // Check the message's send_id
       if (server_set.find(msg_send_recv.send_id()) == server_set.end()) {
-        printf("Agent receives a message from an unknown sender\n");
+        LOG(ERROR) << "Agent receives a message from an unknown sender";
         continue;
       }
       // Check the message's recv_id
       if (msg_send_recv.recv_id() != local_id_) {
-        printf("Agent receives a message with a wrong recv_id\n");
+        LOG(ERROR) << "Agent receives a message with a wrong recv_id";
         continue;
       }
       
@@ -281,7 +291,7 @@ bool Agent::Pull() {
       // future
       if (request_msg.request_type() != 
           Message_RequestMessage_RequestType_key_value) {
-        printf("Agent receives a message with wrong request_type\n");
+        LOG(ERROR) << "Agent receives a message with wrong request_type";
         continue;
       }
       server_set.erase(msg_send_recv.send_id());
