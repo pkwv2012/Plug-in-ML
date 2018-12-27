@@ -6,8 +6,11 @@
 
 #include <stdio.h>
 
+#include <map>
 #include <memory>
 #include <string>
+#include <vector>
+#include <utility>
 
 #include "src/agent/partition.h"
 #include "src/channel/fifo.h"
@@ -15,7 +18,7 @@
 #include "src/communication/communicator.h"
 #include "src/util/common.h"
 
-namespace rpscc {
+namespace rpscc {}
 
 // Agent is on the same host with worker. It provide agency service for worker.
 // Think of it this way. Agent works as a middleman between servers and worker.
@@ -52,6 +55,7 @@ class Agent {
   // Global information about rpscc
   int32 agent_num_;
   int32 server_num_;
+  int32 key_range_;
   
   // Sender and Receiver for agent.
   std::unique_ptr<Communicator> sender_;
@@ -70,6 +74,16 @@ class Agent {
   SharedMemory gard_memory_;
   int32 shared_memory_size_;
   
+  // Key-value list for pushing
+  std::vector<int32> keys_;
+  std::vector<float32> values_;
+  
+  // gradients_ is read from worker, and it will be pushed to servers
+  shmstruct gradients_;
+  
+  // parameters_ is pulled from servers, and it will be sent to worker
+  shmstruct parameters_;
+  
   // Partition message to server
   Partition partition_;
   
@@ -77,6 +91,8 @@ class Agent {
   void Push();
   void Pull();
   
+  // To sort the key list and value list
+  void Agent::SortKeyValue(vector<int32> keys, vector<float32> values);
 };
 
 }  // namespace rpscc

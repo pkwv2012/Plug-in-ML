@@ -20,10 +20,15 @@ class Partition {
   ~Partition() {}
   bool Initialize(int32 key_range, int32 server_num, 
                   std::vector<int>& part_vec);
+  bool Initialize(int32 key_range, int32 server_num, int32* part_vec);
   void Finalize();
   // Binary search in part_vec_ for key
   int32 GetServerByKey(int32 key);
-  
+  // Get 'end' point for the 'strat'. They will satisfies that keys lie in
+  // [start, end) will belong to the same server, but key 'end' belongs to 
+  // the next server or is greater than key_range_. By the way, the keys as
+  // parameters should be sorted.
+  int32 NextEnding(std::vector<int32>& keys, int32 start, int32& server_id);
  private:
   // Number of keys in the system
   int32 key_range_;
