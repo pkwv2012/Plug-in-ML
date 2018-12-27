@@ -37,7 +37,7 @@ class ZmqSendRecv {
   // Send data using zmq
   // Parameter: dst_addr is in the form of <ip>:<port>
   // Return : bytes send to remote
-  int Send(std:string dst_addr, const char* const message, int len);
+  int Send(std::string dst_addr, const char* const message, int len);
 
   // Receive data using zmq
   // Return : bytes received

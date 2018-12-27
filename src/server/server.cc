@@ -19,14 +19,14 @@ bool Server::Initialize() {
   receiver_->Initialize(/* size */, false, /* port */, /* size */);
 
   // Send the server local ip to master and receive config information
-  local_ip_ = /* find a way to get server ip */;
+  local_address_ = /* find a way to get server address */;
   Message msg_send();
   Message msg_recv();
   Message_RegisterMessage reg_msg();
   Message_ConfigMessage config_msg();
   std::string reg_str;
   std::string config_str;
-  reg_msg.set_ip(local_ip_);
+  reg_msg.set_ip(local_address_);
   msg_send.set_message_type(Message_MessageType_register_);
   msg_send.set_recv_id(0);
   msg_send.set_send_id(-1);
@@ -130,6 +130,7 @@ void Server::UpdateParameter() {
   for (uint32 i = 0; i < parameter_length_; ++i) {
     parameters_[i] += update[i] / agent_num_;
   }
+  bottom_version_++;
 }
 
 // In Start(), the server repeatedly receive message from agents, and
@@ -175,7 +176,23 @@ void Server::ServePush(uint32 sender_id, Message_RequestMessage &request) {
     worker_update.AddPair(request.keys(i), request.values(i));
   version_buffer_[id_to_index_[sender_id]].push(worker_update);
 
+  // Acknowledgement from server
+  std::string send_str;
+  Message_RequestMessage ack_msg();
+  Message msg_send();
+  ack_msg.set_request_type(Message_RequestMessage_RequestType_ack);
+  msg_send.set_message_type(Message_MessageType_request);
+  msg_send.set_allocated_request_msg(ack_msg);
+  msg_send.set_send_id(local_id_);
+  msg_send.set_recv_id(sender_id);
+  msg_send.SerializeToString(&send_str);
+  if (sender_->Send(sender_id, send_str) == -1) {
+    /* handle */
+  }
+
   // Update of the bottom version is done
+  // We can call UpdateParameter() when finish_count_[0] is larger than
+  // m*agent_num_/n, as an expedience between speed and consistency.
   if (finish_count_[0] == agent_num_) {
     finish_count_.pop_front();
     finish_count_.push_back(0);
