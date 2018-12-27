@@ -28,8 +28,10 @@ shmstruct* SharedMemory::Read() {
 
 void SharedMemory::Write(shmstruct* data) {
 //  use copy function to copy the data.
-  std::copy(std::begin(data->values), std::end(data->values), std::begin(shared_data_->values));
-  std::copy(std::begin(data->keys), std::end(data->keys), std::begin(shared_data_->keys));
+  std::copy(std::begin(data->values), std::end(data->values),
+      std::begin(shared_data_->values));
+  std::copy(std::begin(data->keys), std::end(data->keys),
+      std::begin(shared_data_->keys));
   shared_data_->size = data->size;
 }
 

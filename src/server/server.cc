@@ -3,15 +3,22 @@
 
 #include <string>
 
+#include "gflags/gflags.h"
 #include "src/message/message.pb.h"
 #include "src/server/server.h"
+#include "src/util/logging.h"
+#include "src/util/network_util.h"
 
 namespace rpscc {
+
+DEFINE_string(net_interface, "",
+  "Name of the net interface used by the node.");
 
 // In Initialize() the server configures itself by sending its IP to the
 // master and receiving related configuration information.
 bool Server::Initialize() {
   // First initialize server communicators
+  // TODO: decide size and port for initialize
   sender_.reset(new ZmqCommunicator());
   receiver_.reset(new ZmqCommunicator());
   sender_->Initialize(/* size */, true, 1024, /* size */);
@@ -19,7 +26,13 @@ bool Server::Initialize() {
   receiver_->Initialize(/* size */, false, /* port */, /* size */);
 
   // Send the server local ip to master and receive config information
-  local_address_ = /* find a way to get server address */;
+  std::string ip = "";
+  GetIP(FLAGS_net_interface, &ip);
+  if (ip == "") {
+    LOG(ERROR) << "Cannot find IP from the interface provided.";
+    return false;
+  }
+  local_address_ = ip;
   Message msg_send();
   Message msg_recv();
   Message_RegisterMessage reg_msg();
@@ -32,12 +45,18 @@ bool Server::Initialize() {
   msg_send.set_send_id(-1);
   msg_send.set_allocated_register_msg(&reg_msg);
   msg_send.SerializeToString(&reg_str);
+  
+  // TODO: to improve robustness multiple attemptions can be made before
+  // we return false.
+  // TODO: the configuration message should be checked (type and content)
+  // before we use the information in it. If the message is fault or corrupted
+  // the server should try again to get another message.
   if (sender_->Send(0, reg_str) == -1) {
-    /* handle */
+    LOG(ERROR) << "Failed to send register information to master.";
     return false;
   }
   if (receiver_->Receive(&config_str) == -1) {
-    /* handle */
+    LOG(ERROR) << "Failed to receive configuration information from master.";
     return false;
   }
   msg_recv.ParseFromString(config_str);
@@ -67,7 +86,7 @@ bool Server::Initialize() {
     }
   }
   if (found_local == false) {
-    /* handle */
+    LOG(ERROR) << "Nothing is found to be assigned to the server.";
     return false;
   }
 
@@ -110,8 +129,13 @@ bool Server::RespondToAll() {
     msg_send.set_message_type(Message_MessageType_request);
     msg_send.set_allocated_request_msg(reply_msg);
     msg_send.SerializeToString(&reply_str);
+
+    //TODO: we'd better try more times before give up replying, and if we
+    //decide to give up for one agent, we shoule send a message to warn it
+    //about the situation.
     if (sender_->Send(request.get_id(), reply_str) == -1) {
-      /* handle */
+      LOG(ERROR) << "Failed to respond to worker " << request.get_id()
+                 << "'s pull request which is blocked before";
     }
   }
 }
@@ -167,7 +191,8 @@ void Server::Start() {
 // to the blocked workers.
 void Server::ServePush(uint32 sender_id, Message_RequestMessage &request) {
   if (id_to_index_.find(sender_id) == id_to_index_.end()) {
-    /* handle */
+    LOG(ERROR) << "Got push request from worker " << sender_id
+               << ", which is unknown by the server.";
     return;
   }
   finish_count_[version_buffer_[id_to_index_[sender_id]].size()]++;
@@ -187,7 +212,8 @@ void Server::ServePush(uint32 sender_id, Message_RequestMessage &request) {
   msg_send.set_recv_id(sender_id);
   msg_send.SerializeToString(&send_str);
   if (sender_->Send(sender_id, send_str) == -1) {
-    /* handle */
+    LOG(ERROR) << "Failed to respond to worker " << sender_id
+               << "'s push request.";
   }
 
   // Update of the bottom version is done
@@ -207,8 +233,9 @@ void Server::ServePush(uint32 sender_id, Message_RequestMessage &request) {
 // pull request will be blocked.
 void Server::ServePull(uint32 sender_id, Message_RequestMessage &request) {
   if (id_to_index_.find(sender_id) == id_to_index_.end()) {
-    /* handle */
-    continue;
+    LOG(ERROR) << "Got pull request from worker " << sender_id
+      << ", which is unknown by the server.";
+    return;
   }
   // Blocked when enough update is pushed but not yet processed
   // A block message will be sent to the sender agent
@@ -229,7 +256,8 @@ void Server::ServePull(uint32 sender_id, Message_RequestMessage &request) {
     msg_send.set_recv_id(sender_id);
     msg_send.SerializeToString(&send_str);
     if (sender_->Send(sender_id, send_str) == -1) {
-      /* handle */
+      LOG(ERROR) << "Failed to send block message for worker " << sender_id
+        << "'s pull request.";
     }
   }
   else {
@@ -248,7 +276,8 @@ void Server::ServePull(uint32 sender_id, Message_RequestMessage &request) {
     msg_send.set_recv_id(sender_id);
     msg_send.SerializeToString(&reply_str);
     if (sender_->Send(sender_id, reply_str) == -1) {
-      /* handle */
+      LOG(ERROR) << "Failed to respond to worker " << sender_id
+        << "'s pull request.";
     }
   }
 }
