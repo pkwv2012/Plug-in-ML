@@ -13,10 +13,10 @@ bool ZmqCommunicator::Initialize(int32 ring_size, bool is_sender,
 
   if (is_sender) {
     printf("Is sender\n");
-    pthread_create(&add_fetch_, NULL, Consume, reinterpret_cast<void*> this);
+    pthread_create(&add_fetch_, NULL, Consume, reinterpret_cast<void*>(this));
   } else {
     printf("Is receiver\n");
-    pthread_create(&add_fetch_, NULL, Produce, reinterpret_cast<void*> this);
+    pthread_create(&add_fetch_, NULL, Produce, reinterpret_cast<void*>(this));
   }
 
   return true;
@@ -59,7 +59,7 @@ int32 ZmqCommunicator::Receive(std::string* message) {
 }
 
 void* ZmqCommunicator::Produce(void* arg) {
-  ZmqCommunicator* zc = reinterpret_cast<ZmqCommunicator*> arg;
+  ZmqCommunicator* zc = reinterpret_cast<ZmqCommunicator*>(arg);
   static char* message = new char[zc->buffer_size_];
   static int32 len;
   printf("Start receiving.\n");
@@ -72,7 +72,7 @@ void* ZmqCommunicator::Produce(void* arg) {
   }
 }
 void* ZmqCommunicator::Consume(void* arg) {
-  ZmqCommunicator* zc = reinterpret_cast<ZmqCommunicator*> arg;
+  ZmqCommunicator* zc = reinterpret_cast<ZmqCommunicator*>(arg);
   static char *mix_message = new char[zc->buffer_size_];
   static char *message = new char[zc->buffer_size_];
   static int32 len;

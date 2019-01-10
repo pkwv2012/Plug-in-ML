@@ -35,21 +35,23 @@ void Master::MainLoop() {
         LOG (INFO) << "Invalid message type";
         break;
 
-      case Message_MessageType_heartbeat:
+      case Message_MessageType_heartbeat: {
         CHECK(msg.has_heartbeat_msg());
         auto heartbeat_msg = msg.heartbeat_msg();
         CHECK(heartbeat_msg.is_live());
         auto send_id = msg.send_id();
         time_t cur_time = time(NULL);
-        CHECK(alive_node_.find(send_id) != alive_node_.end());
+        //CHECK(alive_node_.find(send_id) != alive_node_.end());
         alive_node_[send_id] = cur_time;
         LOG (INFO) << "Heartbeat from " << send_id << ", ip = "
                    << config_.GetIp(send_id);
         break;
+      }
 
-      case Message_MessageType_register_:
+      case Message_MessageType_register_: {
         ProcessRegisterMsg(&msg);
         break;
+      }
     }
   }
 }
@@ -63,7 +65,7 @@ bool Master::DeliverConfig() {
 }
 
 void Master::ProcessRegisterMsg(Message *msg) {
-  auto register_msg = msg->request_msg();
+  auto register_msg = msg->register_msg();
   bool is_server = register_msg.is_server();
   std::string ip = register_msg.ip();
   int32_t port = register_msg.port();
