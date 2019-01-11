@@ -1,6 +1,6 @@
 project("rpscc")
 
-cmake_minimum_required(VERSION 3.9)
+cmake_minimum_required(VERSION 3.5)
 
 #------------------------------------------------------------------------------------------------
 # Add protobuf compilation support
@@ -17,8 +17,8 @@ add_subdirectory(thrid_party/gtest)
 
 include_directories(
         "${PROJECT_SOURCE_DIR}"
-        "thrid_party"
-        "thrid_party/gtest/googletest/include"
+        "${PROJECT_SOURCE_DIR}/thrid_party"
+        "${PROJECT_SOURCE_DIR}/thrid_party/gtest/googletest/include"
 )
 
 message(${PROJECT_BINARY_DIR})
@@ -28,4 +28,4 @@ add_subdirectory(src/message)
 add_subdirectory(src/communication)
 add_subdirectory(src/master)
 add_subdirectory(src/util)
-#add_subdirectory(src/channel)
+add_subdirectory(src/channel)

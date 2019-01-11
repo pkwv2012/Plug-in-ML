@@ -6,6 +6,7 @@
 #ifndef SRC_MASTER_TASK_CONFIG_H_
 #define SRC_MASTER_TASK_CONFIG_H_
 
+#include <random>
 #include <vector>
 
 #include "src/message/message.pb.h"
@@ -34,6 +35,14 @@ class TaskConfig {
   // Append a new agent.
   void AppendAgent(const std::string& ip, const int32_t& port);
 
+  // Is cluster ready?
+  bool Ready() {
+    return server_ip_.size() == server_num_ && agent_ip_.size() == worker_num_;
+  }
+
+  // Generate partition
+  void GeneratePartition();
+
  private:
   int32 worker_num_;
   int32 server_num_;
@@ -45,7 +54,13 @@ class TaskConfig {
   std::vector <int32> partition_;
   std::vector <int32> server_id_;
   int32 bound_;
+
+  static std::default_random_engine generator;
+  static std::unique_ptr<std::uniform_int_distribution<int>> distribution;
 };
+
+std::default_random_engine generator;
+std::unique_ptr<std::uniform_int_distribution<int>> distribution;
 
 }  // namespace rpscc
 

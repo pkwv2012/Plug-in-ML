@@ -49,7 +49,12 @@ void Master::MainLoop() {
       }
 
       case Message_MessageType_register_: {
+        // Master node should response to all cluster node,
+        // after master received the entire register message.
         ProcessRegisterMsg(&msg);
+        if (config_.Ready()) {
+          DeliverConfig();
+        }
         break;
       }
     }
@@ -61,6 +66,7 @@ Master::Master() {
 }
 
 bool Master::DeliverConfig() {
+
   return false;
 }
 
