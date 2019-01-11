@@ -18,7 +18,8 @@ void rpscc::TaskConfig::Initialize(const std::string &config_file) {
   server_num_ = FLAGS_server_num;
   key_range_ = FLAGS_key_range;
   bound_ = FLAGS_bound;
-
+  // [1, key_range - 2], because we should not generate index 0 and index key_range - 2
+  distribution.reset(new std::uniform_int_distribution<int>(1, key_range_ - 2));
 }
 
 TaskConfig::TaskConfig() {
@@ -30,6 +31,30 @@ void TaskConfig::Initialize(const std::string &config_file) {
 }
 
 Message_ConfigMessage *TaskConfig::ToMessage() {
+  Message_ConfigMessage* config_msg = new Message_ConfigMessage();
+  config_msg->set_worker_num(worker_num_);
+  config_msg->set_server_num(server_num_);
+  config_msg->set_bound(bound_);
+  config_msg->set_key_range(key_range_);
+  assert(server_ip_.size() == server_port_.size());
+  int id = 0;
+  for (size_t i = 0; i < server_ip_.size(); ++ i) {
+    config_msg->add_server_ip(
+      std::to_string(server_ip_[i]) + ":"
+      + std::to_string(server_port_[i]));
+    config_msg->add_server_id(id ++);
+  }
+  for (auto p : partition_) {
+    config_msg->add_partition(p);
+  }
+  assert(agent_ip_.size() == agent_port_.size());
+  for (size_t i = 0; i < agent_ip_.size(); ++ i) {
+    config_msg->add_server_ip(
+      std::to_string(agent_ip_[i]) + ":"
+      + std::to_string(agent_port_[i])
+    );
+    config_msg->add_worker_id(id ++);
+  }
   return nullptr;
 }
 
