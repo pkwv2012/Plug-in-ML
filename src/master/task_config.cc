@@ -21,5 +21,29 @@ void rpscc::TaskConfig::Initialize(const std::string &config_file) {
 
 }
 
+TaskConfig::TaskConfig() {
+
+}
+
+void TaskConfig::Initialize(const std::string &config_file) {
+
+}
+
+Message_ConfigMessage *TaskConfig::ToMessage() {
+  return nullptr;
+}
+
+void TaskConfig::AppendNode(const std::string& ip, const int32_t& port) {
+}
+
+void TaskConfig::AppendServer(const std::string &ip, const int32_t &port) {
+  server_ip_.push_back(ip);
+  server_port_.push_back(port);
+}
+
+void TaskConfig::AppendAgent(const std::string &ip, const int32_t &port) {
+  agent_ip_.push_back(ip);
+  agent_port_.push_back(port);
+}
 }  // namespace rpscc
 

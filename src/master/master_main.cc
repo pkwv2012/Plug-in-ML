@@ -5,6 +5,7 @@
 
 #include "src/master/master.h"
 
-int main(int argv, char** argv) {
+int main(int argc, char** argv) {
+  gflags::ParseCommandLineFlags(&argc, &argv, false);
   return 0;
 }

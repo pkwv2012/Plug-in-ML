@@ -39,6 +39,8 @@ message Message {
 
   message RegisterMessage {
     string ip = 1;
+    int32 port = 2;
+    bool is_server = 3;
   }
 
   message HeartbeatMessage {
@@ -51,4 +53,5 @@ message Message {
   ConfigMessage config_msg = 4;
   RequestMessage request_msg = 5;
   HeartbeatMessage heartbeat_msg= 6;
+  RegisterMessage register_msg = 7;
 }

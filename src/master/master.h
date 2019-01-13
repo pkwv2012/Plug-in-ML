@@ -25,13 +25,23 @@ class Master {
 
   bool DeliverConfig();
 
+  // Main loop of master.
+  // Deal with all type of message.
   void MainLoop();
 
  private:
+
+  // Deal with register message
+  void ProcessRegisterMsg(Message* msg);
+
+  // Deal with heartbeat message
+  void ProcessHeartbeatMsg(Message* msg);
+
   std::mutex config_mutex_;
   TaskConfig config_;
   std::unique_ptr<Communicator> sender_;
   std::unique_ptr<Communicator> receiver_;
+  std::unordered_map<int, time_t> alive_node_;
 };
 
 }  // namespace rpscc
