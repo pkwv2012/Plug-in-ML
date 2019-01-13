@@ -40,6 +40,8 @@ class TaskConfig {
     return server_ip_.size() == server_num_ && agent_ip_.size() == worker_num_;
   }
 
+  std::vector<std::string> get_node_ip() { return node_ip_; }
+
   // Generate partition
   void GeneratePartition();
 
@@ -51,16 +53,21 @@ class TaskConfig {
   std::vector <int32_t> server_port_;
   std::vector <std::string> agent_ip_;
   std::vector <int32_t> agent_port_;
-  std::vector <int32> partition_;
-  std::vector <int32> server_id_;
+  std::vector <int32_t> partition_;
+  std::vector <int32_t> server_id_;
+  std::vector <int32_t> agent_id_;
+  std::vector <std::string> node_ip_;
+  std::vector <int32_t> node_port_;
+  std::unordered_map<int32_t, std::string> id_to_addr_;
+  std::unordered_map<std::string, int32_t> addr_to_id_;
   int32 bound_;
 
-  static std::default_random_engine generator;
-  static std::unique_ptr<std::uniform_int_distribution<int>> distribution;
+  static std::default_random_engine generator_;
+  static std::unique_ptr<std::uniform_int_distribution<int>> distribution_;
 };
 
-std::default_random_engine generator;
-std::unique_ptr<std::uniform_int_distribution<int>> distribution;
+std::default_random_engine generator_;
+std::unique_ptr<std::uniform_int_distribution<int>> distribution_;
 
 }  // namespace rpscc
 

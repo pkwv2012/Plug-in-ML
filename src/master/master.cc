@@ -53,6 +53,7 @@ void Master::MainLoop() {
         // after master received the entire register message.
         ProcessRegisterMsg(&msg);
         if (config_.Ready()) {
+          config_.GeneratePartition();
           DeliverConfig();
         }
         break;
@@ -66,8 +67,21 @@ Master::Master() {
 }
 
 bool Master::DeliverConfig() {
-
-  return false;
+  Message* msg = new Message();
+  msg->set_send_id(0); // Id of master
+  msg->set_message_type(Message_MessageType_config);
+  msg->set_allocated_config_msg(config_.ToMessage());
+  for (int32_t i = 0; i < config_.get_node_ip().size(); ++ i) {
+    msg->set_recv_id(i);
+    int32_t* buf_size = nullptr;
+    char* buf = nullptr;
+    *buf_size = msg->ByteSize();
+    buf = new char[*buf_size + 1];
+    msg->SerializeToArray(buf, *buf_size);
+    auto send_byte = sender_->Send(i, buf, *buf_size);
+    LOG(INFO) << "Send to " << i << " config of " << send_byte;
+  }
+  return true;
 }
 
 void Master::ProcessRegisterMsg(Message *msg) {
