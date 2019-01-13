@@ -14,8 +14,8 @@ int main() {
   const int kflag = 0666;
   std::string filename1 = "/tmp/test_fifo1";
   std::string filename2 = "/tmp/test_fifo2";
-  std::string ipc_name1 = "test1";
-  std::string ipc_name2 = "test2";
+  std::string ipc_name1 = "/test_sharedMemory1";
+  std::string ipc_name2 = "/test_sharedMemory2";
   mkfifo(filename1.c_str(), kflag);
   mkfifo(filename2.c_str(), kflag);
   if ((pid = fork()) == 0) {  // the child process
@@ -39,7 +39,7 @@ int main() {
     fifo2.Signal();
     fifo1.Wait();
     data = read_mem.Read();
-    std::cout << "child second read " << data->values[0] << std::endl;
+    std::cout << "child second read " << data->values[1] << std::endl;
     exit(0);
   }
   std::cout << "parent" << std::endl;

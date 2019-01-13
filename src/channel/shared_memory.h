@@ -19,9 +19,9 @@ namespace rpscc {
 
 // the struct to store data;
 struct shmstruct {
-  int64 keys[100];
+  int32 size;
   float32 values[100];
-  int size;
+  int32 keys[100];
 //  int64 keys;
 //  float32 values;
 };

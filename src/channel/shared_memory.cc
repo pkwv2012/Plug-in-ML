@@ -8,13 +8,13 @@
 
 namespace rpscc {
 
-char* px_ipc_name(const char* name);
+  //char* px_ipc_name(const char* name);
 
 void SharedMemory::Initialize(const char *ipc_name) {
 //  initialize the shared memory
-  int fd = shm_open(px_ipc_name(ipc_name),
+  int fd = shm_open(ipc_name,
       O_RDWR | O_CREAT, FILE_MODE);
-//  ftruncate(fd, sizeof(struct shmstruct));
+  ftruncate(fd, sizeof(struct shmstruct));
   shared_data_ = (struct shmstruct*)mmap(NULL, sizeof(struct shmstruct),
       PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
   close(fd);
@@ -36,25 +36,25 @@ void SharedMemory::Write(shmstruct* data) {
 }
 
 // this function target to get a px_ipc_name more capable
-char* px_ipc_name(const char* name) {
-  char *dir, *dst, *slash;
-  if ((dst = reinterpret_cast<char*>(malloc(PATH_MAX))) == NULL)
-    return (NULL);
+// char* px_ipc_name(const char* name) {
+//   char *dir, *dst, *slash;
+//   if ((dst = reinterpret_cast<char*>(malloc(PATH_MAX))) == NULL)
+//     return (NULL);
 
-  if ((dir=getenv("PX_IPC_NAME")) == NULL) {
-#ifdef POSIX_IPC_PREFIX
-    dir = POSIX_IPC_PREFIX
-#else
-    dir = "/tmp/";
-#endif
-  }
-  if (dir[strlen(dir)-1] == '/') {
-    slash = "";
-  } else {
-    slash = "/";
-  }
-  snprintf(dst, PATH_MAX, "%s%s%s", dir, slash, name);
-  return (dst);
-}
+//   if ((dir=getenv("PX_IPC_NAME")) == NULL) {
+// #ifdef POSIX_IPC_PREFIX
+//     dir = POSIX_IPC_PREFIX
+// #else
+//     dir = "/tmp/";
+// #endif
+//   }
+//   if (dir[strlen(dir)-1] == '/') {
+//     slash = "";
+//   } else {
+//     slash = "/";
+//   }
+//   snprintf(dst, PATH_MAX, "%s%s%s", dir, slash, name);
+//   return (dst);
+// }
 
 }  // namespace rpscc
