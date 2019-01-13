@@ -33,6 +33,8 @@ message Message {
     // partition.size() = server_num + 1
     repeated int32 partition = 5;  // used for consistent hashing
     repeated int32 server_id = 6;
+    // actually there is not need to deliver the worker_id.
+    // But the communicator need the worker_id & Ip.
     repeated int32 worker_id = 8;
     int32 bound = 7;  // ASP = INF, BSP = 1
   }

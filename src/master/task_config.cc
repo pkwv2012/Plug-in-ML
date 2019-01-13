@@ -3,6 +3,8 @@
 // Created by PeikaiZheng on 2018/12/12.
 //
 
+#include <algorithm>
+
 #include "gflags/gflags.h"
 #include "task_config.h"
 
@@ -19,7 +21,7 @@ void rpscc::TaskConfig::Initialize(const std::string &config_file) {
   key_range_ = FLAGS_key_range;
   bound_ = FLAGS_bound;
   // [1, key_range - 2], because we should not generate index 0 and index key_range - 2
-  distribution.reset(new std::uniform_int_distribution<int>(1, key_range_ - 2));
+  distribution_.reset(new std::uniform_int_distribution<int>(1, key_range_ - 2));
 }
 
 TaskConfig::TaskConfig() {
@@ -55,7 +57,7 @@ Message_ConfigMessage *TaskConfig::ToMessage() {
     );
     config_msg->add_worker_id(id ++);
   }
-  return nullptr;
+  return config_msg;
 }
 
 void TaskConfig::AppendNode(const std::string& ip, const int32_t& port) {
@@ -64,11 +66,29 @@ void TaskConfig::AppendNode(const std::string& ip, const int32_t& port) {
 void TaskConfig::AppendServer(const std::string &ip, const int32_t &port) {
   server_ip_.push_back(ip);
   server_port_.push_back(port);
+  node_ip_.push_back(ip);
+  node_port_.push_back(port);
+  server_id_.push_back(node_ip_.size() - 1);
+  id_to_addr_[node_ip_.size() - 1] = ip + ":" + std::to_string(port);
 }
 
 void TaskConfig::AppendAgent(const std::string &ip, const int32_t &port) {
   agent_ip_.push_back(ip);
   agent_port_.push_back(port);
+  node_ip_.push_back(ip);
+  node_port_.push_back(port);
+  agent_id_.push_back(node_ip_.size() - 1);
+  id_to_addr_[node_ip_.size() - 1] = ip + ":" + std::to_string(port);
 }
+
+void TaskConfig::GeneratePartition() {
+  partition_.push_back(0);
+  for (int i = 1; i < server_num_; ++ i) {
+    partition_.push_back(distribution_(generator_));
+  }
+  partition_.push_back(key_range_);
+  std::sort(partition_.begin(), partition_.end());
+}
+
 }  // namespace rpscc
 
