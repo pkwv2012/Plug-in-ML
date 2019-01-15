@@ -10,6 +10,8 @@
 #include "src/util/logging.h"
 #include "master.h"
 
+DEFINE_int32(heartbeat_timeout, 30, "The maximum time to decide "
+  "whether the node is offline");
 
 namespace rpscc {
 
@@ -98,6 +100,17 @@ void Master::ProcessRegisterMsg(Message *msg) {
 
 void Master::ProcessHeartbeatMsg(Message *msg) {
 
+}
+
+std::vector<int> Master::GetDeadNode() {
+  std::vector<int> dead_node;
+  auto cur_time = time(NULL);
+  for (const auto& pr: alive_node_) {
+    if (pr.second + FLAGS_heartbeat_timeout < cur_time) {
+      dead_node.push_back(pr.first);
+    }
+  }
+  return dead_node;
 }
 
 }

@@ -29,6 +29,9 @@ class Master {
   // Deal with all type of message.
   void MainLoop();
 
+  // Get the dead node
+  std::vector<int> GetDeadNode();
+
  private:
 
   // Deal with register message
