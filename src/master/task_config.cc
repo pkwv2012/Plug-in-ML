@@ -40,23 +40,36 @@ Message_ConfigMessage *TaskConfig::ToMessage() {
   config_msg->set_key_range(key_range_);
   assert(server_ip_.size() == server_port_.size());
   int id = 0;
-  for (size_t i = 0; i < server_ip_.size(); ++ i) {
-    config_msg->add_server_ip(
-      std::to_string(server_ip_[i]) + ":"
-      + std::to_string(server_port_[i]));
-    config_msg->add_server_id(id ++);
+  for (auto pr: id_to_addr_) {
+    config_msg->set_node_ip_port(pr.first, pr.second);
   }
+  for (auto id : server_id_) {
+    config_msg->add_server_id(id);
+  }
+  for (auto id : agent_id_) {
+    config_msg->add_worker_id(agent_id_);
+  }
+  for (auto id : master_id_) {
+    config_msg->add_master_id(id);
+  }
+
+//  for (size_t i = 0; i < server_ip_.size(); ++ i) {
+//    config_msg->add_server_ip(
+//      std::to_string(server_ip_[i]) + ":"
+//      + std::to_string(server_port_[i]));
+//    config_msg->add_server_id(id ++);
+//  }
   for (auto p : partition_) {
     config_msg->add_partition(p);
   }
   assert(agent_ip_.size() == agent_port_.size());
-  for (size_t i = 0; i < agent_ip_.size(); ++ i) {
-    config_msg->add_server_ip(
-      std::to_string(agent_ip_[i]) + ":"
-      + std::to_string(agent_port_[i])
-    );
-    config_msg->add_worker_id(id ++);
-  }
+//  for (size_t i = 0; i < agent_ip_.size(); ++ i) {
+//    config_msg->add_server_ip(
+//      std::to_string(agent_ip_[i]) + ":"
+//      + std::to_string(agent_port_[i])
+//    );
+//    config_msg->add_worker_id(id ++);
+//  }
   return config_msg;
 }
 
@@ -88,6 +101,25 @@ void TaskConfig::GeneratePartition() {
   }
   partition_.push_back(key_range_);
   std::sort(partition_.begin(), partition_.end());
+}
+
+void TaskConfig::AppendMaster(const std::string &ip, const int32_t &port) {
+  node_ip_.push_back(ip);
+  node_port_.push_back(port);
+  master_id_.push_back(node_port_.size() - 1);
+}
+
+void TaskConfig::AppendMaster(const std::string &ip_port) {
+  std::stringstream ss(ip_port);
+  if (ss.good()) {
+    std::string ip;
+    std::getline(ss, ip, ':');
+    node_ip_.push_back(ip);
+    std::string port;
+    getline(ss, port, ":");
+    node_port_.push_back(std::stoi(port));
+  }
+  master_id_.push_back(node_port_.size() - 1);
 }
 
 }  // namespace rpscc

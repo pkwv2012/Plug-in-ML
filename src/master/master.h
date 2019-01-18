@@ -24,6 +24,8 @@ class Master {
   }
 
   void Initialize(const int16& listen_port=12018);
+  // Return: the number of valid master.
+  int32_t Initialize(const std::string& master_ip_port);
 
   // wait for servers & agents ready
   void WaitForClusterReady();
