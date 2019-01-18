@@ -26,6 +26,6 @@ message(${PROJECT_SOURCE_DIR})
 
 add_subdirectory(src/message)
 add_subdirectory(src/communication)
-add_subdirectory(src/master)
+#add_subdirectory(src/master)
 add_subdirectory(src/util)
 add_subdirectory(src/channel)

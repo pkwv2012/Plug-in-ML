@@ -18,6 +18,11 @@ class Master {
  public:
   Master();
 
+  static Master* Get() {
+    static Master master;
+    return &master;
+  }
+
   void Initialize(const int16& listen_port=12018);
 
   // wait for servers & agents ready
@@ -38,7 +43,7 @@ class Master {
   void ProcessRegisterMsg(Message* msg);
 
   // Deal with heartbeat message
-  void ProcessHeartbeatMsg(Message* msg);
+  void ProcessHeartbeatMsg(const Message& msg);
 
   std::mutex config_mutex_;
   TaskConfig config_;
