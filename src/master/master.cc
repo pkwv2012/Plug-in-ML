@@ -8,6 +8,8 @@
 #include "src/communication/zmq_communicator.h"
 #include "src/master/master.h"
 #include "src/util/logging.h"
+#include "master.h"
+
 
 DEFINE_int32(heartbeat_timeout, 30, "The maximum time to decide "
   "whether the node is offline");
@@ -110,6 +112,20 @@ std::vector<int> Master::GetDeadNode() {
     }
   }
   return dead_node;
+}
+
+int32_t Master::Initialize(const std::string &master_ip_port) {
+  std::stringstream ss(master_ip_port);
+  int count = 0;
+  while (ss.good()) {
+    std::string ip_port;
+    std::getline(ss, ip_port, ',');
+    if (ip_port.size() > 0) {
+      config_.AppendMaster(ip_port);
+      ++ count;
+    }
+  }
+  return count;
 }
 
 }
