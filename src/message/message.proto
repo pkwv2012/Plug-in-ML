@@ -28,7 +28,7 @@ message Message {
     int32 worker_num = 1;
     int32 server_num = 2;
     int32 key_range = 3;  // the number of features
-    repeated string server_ip = 4;
+    repeated string node_ip_port = 4;
     // partition = [0, key1, key2, ... , key_range]
     // partition.size() = server_num + 1
     repeated int32 partition = 5;  // used for consistent hashing
@@ -36,6 +36,7 @@ message Message {
     // actually there is not need to deliver the worker_id.
     // But the communicator need the worker_id & Ip.
     repeated int32 worker_id = 8;
+    repeated int32 master_id = 9;
     int32 bound = 7;  // ASP = INF, BSP = 1
   }
 
