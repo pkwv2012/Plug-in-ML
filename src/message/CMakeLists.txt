@@ -18,5 +18,8 @@ add_custom_target(
         DEPENDS message.pb.h message.pb.cc
         COMMENT "Building custom target"
 )
-#protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS message.proto)
-#message("hdr=${PROTO_HDRS} src=${PROTO_SRCS} ...")
+
+protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${PROJECT_SOURCE_DIR}/src/message/message.proto)
+message("hdr=${PROTO_HDRS} src=${PROTO_SRCS} ...")
+
+#add_library(message message.pb.h message.pb.cc)

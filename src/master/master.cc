@@ -8,7 +8,6 @@
 #include "src/communication/zmq_communicator.h"
 #include "src/master/master.h"
 #include "src/util/logging.h"
-#include "master.h"
 
 DEFINE_int32(heartbeat_timeout, 30, "The maximum time to decide "
   "whether the node is offline");
@@ -38,15 +37,7 @@ void Master::MainLoop() {
         break;
 
       case Message_MessageType_heartbeat: {
-        CHECK(msg.has_heartbeat_msg());
-        auto heartbeat_msg = msg.heartbeat_msg();
-        CHECK(heartbeat_msg.is_live());
-        auto send_id = msg.send_id();
-        time_t cur_time = time(NULL);
-        //CHECK(alive_node_.find(send_id) != alive_node_.end());
-        alive_node_[send_id] = cur_time;
-        LOG (INFO) << "Heartbeat from " << send_id << ", ip = "
-                   << config_.GetIp(send_id);
+        ProcessHeartbeatMsg(msg);
         break;
       }
 
@@ -98,8 +89,16 @@ void Master::ProcessRegisterMsg(Message *msg) {
   }
 }
 
-void Master::ProcessHeartbeatMsg(Message *msg) {
-
+void Master::ProcessHeartbeatMsg(const Message& msg) {
+  CHECK(msg.has_heartbeat_msg());
+  auto heartbeat_msg = msg.heartbeat_msg();
+  CHECK(heartbeat_msg.is_live());
+  auto send_id = msg.send_id();
+  time_t cur_time = time(NULL);
+  //CHECK(alive_node_.find(send_id) != alive_node_.end());
+  alive_node_[send_id] = cur_time;
+  LOG (INFO) << "Heartbeat from " << send_id << ", ip = "
+             << config_.GetIp(send_id);
 }
 
 std::vector<int> Master::GetDeadNode() {
