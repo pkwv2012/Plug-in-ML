@@ -12,9 +12,9 @@ using namespace std;
 using namespace rpscc;
 
 const string filename1 = "/tmp/test_fifo1";
-const string filename2 = "/tmp/test_fifo2.dat";
-string ipc_name1 = "/tmp/test_sharedMemory1";
-string ipc_name2 = "/tmp/test_sharedMemory2";
+const string filename2 = "/tmp/test_fifo2";
+string ipc_name1 = "/test_sharedMemory1";
+string ipc_name2 = "/test_sharedMemory2";
 const int kflag = 0666;
 
 // notice must run these three test one by one
@@ -25,18 +25,19 @@ const int kflag = 0666;
 
 
 TEST(ChannelTest, Fifo) {
-  mkfifo(filename1.c_str(), kflag);
+  string fifoname = "/tmp/Fifo_Test1";
+  mkfifo(fifoname.c_str(), kflag);
   int pid = fork();
   if(pid == 0) {
     Fifo fifo1;
-    fifo1.Initialize(filename1, true);
+    fifo1.Initialize(fifoname, true);
     fifo1.Open();
     fifo1.Wait();
     cout << "Read process complete." << endl;
   } else {
     sleep(1);
     Fifo fifo2;
-    fifo2.Initialize(filename1, false);
+    fifo2.Initialize(fifoname, false);
     fifo2.Open();
     fifo2.Signal();
     cout << "Write process complete." << endl;
@@ -44,15 +45,17 @@ TEST(ChannelTest, Fifo) {
 }
 
 TEST(ChannelTest, SharedMemory) {
-  mkfifo(filename1.c_str(), kflag);
+  string fifoname = "/tmp/Fifo_Test2";
+  string ipc_name_in = "/shm_test_in";
+  mkfifo(fifoname.c_str(), kflag);
   int pid = fork();
   if(pid == 0) {
     Fifo fifo_reader;
-    fifo_reader.Initialize(filename1, true);
+    fifo_reader.Initialize(fifoname, true);
     fifo_reader.Open();
 
     SharedMemory read_mem;
-    read_mem.Initialize(ipc_name1.c_str());
+    read_mem.Initialize(ipc_name_in.c_str());
 
     fifo_reader.Wait();
 
@@ -64,11 +67,11 @@ TEST(ChannelTest, SharedMemory) {
   } else {
     sleep(1);
     Fifo fifo_writer;
-    fifo_writer.Initialize(filename1, false);
+    fifo_writer.Initialize(fifoname, false);
     fifo_writer.Open();
 
     SharedMemory write_mem;
-    write_mem.Initialize(ipc_name1.c_str());
+    write_mem.Initialize(ipc_name_in.c_str());
 
     shmstruct store_data;
     store_data.values[0] = 13.5;
@@ -83,9 +86,11 @@ TEST(ChannelTest, SharedMemory) {
 TEST(ChannelTest, FifoWithPython) {
   // run this test first && then run python_test.py
   // maybe following add the part of auto run python_test.py
-  mkfifo(filename1.c_str(), kflag);
+  system("python python_test.py &");
+  string fifoname = "/tmp/python_fifo";
+  mkfifo(fifoname.c_str(), kflag);
   Fifo read_fifo;
-  read_fifo.Initialize(filename1, true);
+  read_fifo.Initialize(fifoname, true);
   read_fifo.Open();
   read_fifo.Wait();
   cout << "read complete." << endl;
@@ -96,15 +101,14 @@ TEST(ChannelTest, FifoWithPython) {
 // and write to another shared memory and the c++ process read
 // the data and make gtest to make sure.
 // maybe chmod 777 /dev/shm/test_sharedMemory2 is needed
-// also need to run channel_test_with_python.py first
+
 TEST(ChannelTest, ChannelTestWithPython) {
+  system("python channel_test_with_python.py &");
   Fifo fifo_read, fifo_write;
   mkfifo(filename1.c_str(), kflag);
   mkfifo(filename2.c_str(), kflag);
   fifo_read.Initialize(filename2.c_str(), true);
   fifo_write.Initialize(filename1.c_str(), false);
-  fifo_read.Open();
-  fifo_write.Open();
   SharedMemory read_mem, write_mem;
   read_mem.Initialize(ipc_name2.c_str());
   write_mem.Initialize(ipc_name1.c_str());
@@ -117,7 +121,9 @@ TEST(ChannelTest, ChannelTestWithPython) {
     store_data.keys[i] = i;
   }
   write_mem.Write(&store_data);
+  fifo_write.Open();
   fifo_write.Signal();
+  fifo_read.Open();
   fifo_read.Wait();
 
   shmstruct* data_read = read_mem.Read();

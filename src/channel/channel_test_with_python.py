@@ -25,7 +25,7 @@ with contextlib.closing(mmap.mmap(read_fd.fileno(), 804, access=mmap.ACCESS_READ
         c = m.read(4)
         s.append(struct.unpack('i', c)[0])
 
-    print s
+    #print s
 # add 1 to every keys and values
 with contextlib.closing(mmap.mmap(write_fd, 804, mmap.MAP_SHARED, mmap.PROT_WRITE)) as w:
     w.seek(0)
