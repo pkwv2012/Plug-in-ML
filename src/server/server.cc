@@ -13,16 +13,18 @@ namespace rpscc {
 
 DEFINE_string(net_interface, "",
   "Name of the net interface used by the node.");
+DEFINE_string(master_ip_port, "",
+  "IP and Port of the first master node.");
 
 // In Initialize() the server configures itself by sending its IP to the
 // master and receiving related configuration information.
 bool Server::Initialize() {
   // First initialize server communicators
-  // TODO: decide size and port for initialize
+  // TODO(Song Xu): decide size and port for initialize
   sender_.reset(new ZmqCommunicator());
   receiver_.reset(new ZmqCommunicator());
   sender_->Initialize(/* size */, true, 1024, /* size */);
-  sender_->AddIdAddr(0, /* master address and port */);
+  sender_->AddIdAddr(0, FLAGS_master_ip_port);
   receiver_->Initialize(/* size */, false, /* port */, /* size */);
 
   // Send the server local ip to master and receive config information
@@ -45,11 +47,12 @@ bool Server::Initialize() {
   msg_send.set_send_id(-1);
   msg_send.set_allocated_register_msg(&reg_msg);
   msg_send.SerializeToString(&reg_str);
-  
-  // TODO: to improve robustness multiple attemptions can be made before
-  // we return false.
-  // TODO: the configuration message should be checked (type and content)
-  // before we use the information in it. If the message is fault or corrupted
+
+  // TODO(Song Xu): to improve robustness multiple attemptions can be made
+  // before we return false.
+  // TODO(Song Xu): the configuration message should be checked
+  // (type and content) before we use the information in it.
+  // If the message is fault or corrupted
   // the server should try again to get another message.
   if (sender_->Send(0, reg_str) == -1) {
     LOG(ERROR) << "Failed to send register information to master.";
@@ -69,15 +72,19 @@ bool Server::Initialize() {
   agent_num_ = config_msg.worker_num();
   server_num_ = config_msg.server_num();
 
-  // Initialize server ips and ids,
-  // and record local parameter range from config_msg.partition.
+  // Initialization of sender's id mapping to ip-ports, where the id 0 is
+  // already added.
+  for (uint32 i = 1; i < config_msg.node_ip_port_size(); ++i) {
+    sender_->AddIdAddr(i, config_msg.node_ip_port(i));
+  }
+
+  // Initialize server ids, and record local parameter range from
+  // config_msg.partition.
   // Note that config_msg.partition should be a array of length #server + 1.
   // It's first element must be 0 and the last must be config_msg.key_range.
   bool found_local = false;
   for (uint32 i = 0; i < server_num_; ++i) {
-    std::string server_i_ip = config_msg.server_ip(i);
     uint32 server_i_id = config_msg.server_id(i);
-    server_ips_.push_back(server_i_ip);
     server_ids_.push_back(server_i_id);
     if (server_i_id == local_id_) {
       start_key_ = config_msg.partition(i);
@@ -90,9 +97,14 @@ bool Server::Initialize() {
     return false;
   }
 
+  // Initialize master ids.
+  for (uint32 i = 0; i < config_msg.master_id_size(); ++i) {
+    master_ids_.push_back(config_msg.master_id(i));
+  }
+
   // Initialize map from worker ID to version buffer index
   for (uint32 i = 0; i < agent_num; ++i)
-    id_to_index_[worker_id(i)] = i;
+    id_to_index_[config_msg.worker_id(i)] = i;
 
   // By default, all parameters are initialized to be zero
   for (uint32 i = 0; i < parameter_length_; ++i)
@@ -130,9 +142,9 @@ bool Server::RespondToAll() {
     msg_send.set_allocated_request_msg(reply_msg);
     msg_send.SerializeToString(&reply_str);
 
-    //TODO: we'd better try more times before give up replying, and if we
-    //decide to give up for one agent, we shoule send a message to warn it
-    //about the situation.
+    // TODO(Song Xu): we'd better try more times before give up replying, and
+    // if we decide to give up for one agent, we shoule send a message to warn
+    // it about the situation.
     if (sender_->Send(request.get_id(), reply_str) == -1) {
       LOG(ERROR) << "Failed to respond to worker " << request.get_id()
                  << "'s pull request which is blocked before";
@@ -170,14 +182,13 @@ void Server::Start() {
 
     if (msg_recv.message_type() == Message_MessageType_request) {
       Message_RequestMessage request = msg_recv.request_msg();
-      // Push request:
       if (request.request_type()
         == Message_RequestMessage_RequestType_key_value) {
+        // Push request:
         ServePush(sender_id, request);
-      }
-      // Pull request:
-      else if (request.request_type()
+      } else if (request.request_type()
         == Message_RequestMessage_RequestType_key) {
+        // Pull request:
         ServePull(sender_id, request);
       }
     }
@@ -189,7 +200,8 @@ void Server::Start() {
 // If a round of version update is finished after the push, UpdateParameter()
 // and RespondToAll() will be called to return the new version of parameters
 // to the blocked workers.
-void Server::ServePush(uint32 sender_id, Message_RequestMessage &request) {
+void Server::ServePush(uint32 &sender_id,
+  const Message_RequestMessage &request) {
   if (id_to_index_.find(sender_id) == id_to_index_.end()) {
     LOG(ERROR) << "Got push request from worker " << sender_id
                << ", which is unknown by the server.";
@@ -231,7 +243,8 @@ void Server::ServePush(uint32 sender_id, Message_RequestMessage &request) {
 // updates that the worker has already committed but is not yet processed by
 // the server. If the number of updates in version_buffer is too large, the
 // pull request will be blocked.
-void Server::ServePull(uint32 sender_id, Message_RequestMessage &request) {
+void Server::ServePull(uint32 &sender_id,
+  const Message_RequestMessage &request) {
   if (id_to_index_.find(sender_id) == id_to_index_.end()) {
     LOG(ERROR) << "Got pull request from worker " << sender_id
       << ", which is unknown by the server.";
@@ -259,8 +272,7 @@ void Server::ServePull(uint32 sender_id, Message_RequestMessage &request) {
       LOG(ERROR) << "Failed to send block message for worker " << sender_id
         << "'s pull request.";
     }
-  }
-  else {
+  } else {
     std::string reply_str;
     Message msg_send();
     Message_RequestMessage reply_msg();

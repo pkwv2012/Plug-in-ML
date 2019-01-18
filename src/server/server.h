@@ -46,7 +46,7 @@ class Server {
   uint32 agent_num_;
   uint32 server_num_;
 
-  std::vector<std::string> server_ips_;
+  std::vector<uint32> master_ids_;
   std::vector<uint32> server_ids_;
   std::vector<float> parameters_;
   std::vector<std::queue<KeyValueList> > version_buffer_
@@ -57,8 +57,8 @@ class Server {
 
   bool RespondToAll();
   void UpdateParameter();
-  void ServePull(uint32 sender_id, Message_RequestMessage &request);
-  void ServePush(uint32 sender_id, Message_RequestMessage &request);
+  void ServePull(uint32 sender_id, const Message_RequestMessage &request);
+  void ServePush(uint32 sender_id, const Message_RequestMessage &request);
 };
 
 }  // namespace rpscc
