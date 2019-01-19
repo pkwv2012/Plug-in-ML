@@ -25,7 +25,7 @@ class TaskConfig {
   Message_ConfigMessage* ToMessage();
 
   // Get ip from id.
-  std::string GetIp(const int32_t& id) { return server_ip_[id]; }
+  std::string GetIp(const int32_t& id) { return id_to_addr_[id]; }
 
   // Append a new node.
   void AppendNode(const std::string& ip, const int32_t& port);
@@ -45,7 +45,11 @@ class TaskConfig {
     return server_id_.size() == server_num_ && agent_id_.size() == worker_num_;
   }
 
-  std::vector<std::string> get_node_ip() { return node_ip_; }
+  std::vector<std::string> get_node_ip() {
+    std::vector<std::string> ip;
+    for (auto id_ip : id_to_addr_) ip.push_back(id_ip.second);
+    return ip;
+  }
 
   bool IsMasterId(const int32_t& id) const {
     return std::find(master_id_.begin(), master_id_.end(), id) != master_id_.end();
