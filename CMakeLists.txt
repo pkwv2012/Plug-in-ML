@@ -8,6 +8,7 @@ cmake_minimum_required(VERSION 3.5)
 include("FindProtobuf")
 find_package(Protobuf REQUIRED)
 
+
 add_definitions("-std=c++14")
 
 # How to turn on the multi-thread flag of Gflags?

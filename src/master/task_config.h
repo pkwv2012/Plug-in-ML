@@ -83,9 +83,6 @@ class TaskConfig {
   static std::unique_ptr<std::uniform_int_distribution<int>> distribution_;
 };
 
-std::default_random_engine generator_;
-std::unique_ptr<std::uniform_int_distribution<int>> distribution_;
-
 }  // namespace rpscc
 
 #endif  // SRC_MASTER_TASK_CONFIG_H_
