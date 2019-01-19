@@ -28,7 +28,7 @@ class Partition {
   // [start, end) will belong to the same server, but key 'end' belongs to 
   // the next server or is greater than key_range_. By the way, the keys as
   // parameters should be sorted.
-  int32 NextEnding(std::vector<int32>& keys, int32 start, int32& server_id);
+  int32 NextEnding(std::vector<int32> keys, int32 start, int32& server_id);
  private:
   // Number of keys in the system
   int32 key_range_;

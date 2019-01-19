@@ -30,7 +30,7 @@ bool Partition::Initialize(int32 key_range, int32 server_num,
 }
 bool Partition::Initialize(int32 key_range, int32 server_num, int* part_vec) {
   key_range_ = key_range;
-  server_num_ = sever_num;
+  server_num_ = server_num;
  
   // Check the part_vec
   // sort(part_vec, part_vec + server_num + 1);

@@ -10,6 +10,7 @@
 #include "src/communication/zmq_communicator.h"
 #include "src/message/message.pb.h"
 #include "src/util/logging.h"
+#include "src/util/network_util.h"
 
 namespace rpscc {
 
@@ -47,7 +48,7 @@ bool Agent::Initialize(std::string para_fifo_name,
     printf("Initialize sender failed.");
     return false;
   }
-  sender_->Initialize(/* ring_size */, true, /* listen_port */);
+  sender_->Initialize(64/* ring_size */, true, 1024/* listen_port */);
   
   // 2.Initialize receiver
   receiver_.reset(new ZmqCommunicator());
@@ -55,7 +56,7 @@ bool Agent::Initialize(std::string para_fifo_name,
     printf("Initialize receiver failed.");
     return false;
   }
-  receiver_->Initialize(/* ring_size */, false, /* listen_port */);
+  receiver_->Initialize(64/* ring_size */, false, 1024/* listen_port */);
   
   // 3 Exchange messages with master
   // 3_1.Send this agent's local_ip_ to master, and receive config information
@@ -81,7 +82,7 @@ bool Agent::Initialize(std::string para_fifo_name,
   msg_send.set_send_id(-1);
   msg_send.set_allocated_register_msg(&reg_msg);
   msg_send.SerializeToString(&reg_str);
-  if (sender_.Send(0, reg_str) == -1) {
+  if (sender_->Send(0, reg_str) == -1) {
     LOG(ERROR) << "Cannot send register message to master";
     return false;
   }
@@ -96,22 +97,20 @@ bool Agent::Initialize(std::string para_fifo_name,
   local_id_ = msg_recv.recv_id();
   agent_num_ = config_msg.worker_num();
   server_num_ = config_msg.server_num();
-  key_range_  = config_msg.key)range();
+  key_range_  = config_msg.key_range();
   
   // 3_3.Add <server_id, server_addr> pairs to the sender_'s <Id, Addr> map.
   for (int32 i = 0; i < server_num_; i++) {
-    std::string server_i_ip = config_msg.server_ip(i);
+    std::string server_i_ip_port = config_msg.node_ip_port(
+                                   config_msg.server_id(i));
     int32 server_i_id = config_msg.server_id(i);
-    sender_.AddIdAddr(server_i_id, server_i_ip);
-  }
-  std::vector<int32> part_vec;
-  for (int32 i = 0; i < server_num_ + 1; i++) {
-    part_vec.push_back(config_msg.partition(i));
+    sender_->AddIdAddr(server_i_id, server_i_ip_port);
   }
   
   // 3_4.Initialize the partition_.
   int32* part_vec = new int32[server_num_ + 1];
-  config_msg.mutable_partition->ExtractSubrange(0, server_num_ + 1, part_vec);
+  config_msg.mutable_partition()->ExtractSubrange(0, server_num_ + 1, 
+                                                  part_vec);
   partition_.Initialize(key_range_, server_num_, part_vec);
   delete[] part_vec;
   
@@ -133,14 +132,14 @@ bool Agent::Initialize(std::string para_fifo_name,
   para_fifo_.Initialize(para_fifo_name_, true);
   grad_fifo_.Initialize(grad_fifo_name_, false);
   para_memory_.Initialize(para_memory_name_.c_str());
-  grad_memory_.Initialzie(grad_memory_name_.c_str());
+  grad_memory_.Initialize(grad_memory_name_.c_str());
   
   return true;
 }
 
-bool Agent::Finalize() {
-  sender_.Finalize();
-  receiver_.Finalize();
+void Agent::Finalize() {
+  sender_->Finalize();
+  receiver_->Finalize();
   partition_.Finalize();
 }
 
@@ -158,13 +157,12 @@ bool Agent::AgentWork() {
   while (true) {
     // Wait for worker's signal,
     grad_fifo_.Wait();
-    gradients_ = grad_memory_.Read();
+    gradients_ = *grad_memory_.Read();
     Push();
     // Set the key_list_ for pulling
     // PS: At present, agent just request for all keys from servers
-    parameters_.keys.clear();
     for (int32 i = 0; i < key_range_; i++) {
-      parameters_.keys.push_back(i);
+      parameters_.keys[i] = i;
     }
     Pull();
     para_memory_.Write(&parameters_);
@@ -180,7 +178,7 @@ bool Agent::Push() {
   std::string request_str;
   
   // Sort the key_value_list_ by the key, and then send them by blocks.
-  SortKeyValue(gradients_.keys, gradients_.values);
+  //SortKeyValue(gradients_.keys, gradients_.values);
   
   // Set the message type
   request_msg.set_request_type(Message_RequestMessage_RequestType_key_value);
@@ -191,16 +189,17 @@ bool Agent::Push() {
   
   // Divide key list and value list and send them to different serverss
   start = 0;
-  size = gradients_.keys.size();
+  size = gradients_.size;
   while (start < size) {
-    end = NextEnding(gradients_.keys, start, server_id);
+    end = partition_.NextEnding(std::vector<int>(parameters_.keys, 
+                              parameters_.keys + 100), start, server_id);
     request_msg.clear_keys();
     request_msg.clear_values();
     for (int32 i = start; i < end; i++) {
       request_msg.add_keys(gradients_.keys[i]);
       request_msg.add_values(gradients_.values[i]);
     }
-    msg_send.set_allocated_request_msg(request_msg);
+    msg_send.set_allocated_request_msg(&request_msg);
     msg_send.set_recv_id(server_id);
     msg_send.SerializeToString(&request_str);
     if (sender_->Send(server_id, request_str) == -1) {
@@ -222,7 +221,7 @@ bool Agent::Pull() {
   std::set<int32> server_set; 
   
   // Sort the key_list_
-  sort(parameters_.keys.begin(), parameters_.keys.end());
+  //sort(parameters_.keys.begin(), parameters_.keys.end());
   
   // Set the message type
   request_msg.set_request_type(Message_RequestMessage_RequestType_key);
@@ -233,15 +232,16 @@ bool Agent::Pull() {
   
   // Divide key list and send them to different servers
   start = 0;
-  size = parameters_.keys.size();
+  size = parameters_.size;
   while (start < size) {
-    end = NextEnding(parameters_.keys, start, server_id);
+    end = partition_.NextEnding(std::vector<int>(parameters_.keys, 
+                              parameters_.keys + 100), start, server_id);
     server_set.insert(server_id);
     request_msg.clear_keys();
     for (int32 i = start; i < end; i++) {
       request_msg.add_keys(gradients_.keys[i]);
     }
-    msg_send_recv.set_allocated_request_msg(request_msg);
+    msg_send_recv.set_allocated_request_msg(&request_msg);
     msg_send_recv.set_recv_id(server_id);
     msg_send_recv.SerializeToString(&msg_str);
     if (sender_->Send(server_id, msg_str) == -1) {
@@ -254,9 +254,11 @@ bool Agent::Pull() {
   // Receive parameters from servers
   // PS: Maybe I will add a timer for this loop. Beacuse I want to avoid
   // infinite loop caused by carshed server or servers.
-  parameters_.keys.clear();
-  parameters_.values.clear();
-  while (!server_list.empty()) {
+  
+  int32 cur = 0;
+  parameters_.size = 0;
+  
+  while (!server_set.empty()) {
     if (receiver_->Receive(&msg_str) == -1) {
       LOG(ERROR) << "Error in receiving message from servers";
     } else {
@@ -269,7 +271,7 @@ bool Agent::Pull() {
         continue;
       }
       // Check the message content
-      if (!msg_send_recv.has_request_message()) {
+      if (!msg_send_recv.has_request_msg()) {
         LOG(ERROR) << "Agent receives a message without request_message";
         continue;
       }
@@ -300,16 +302,17 @@ bool Agent::Pull() {
       // if I know the maximal number of key-value pairs
       // Extract parameter keys from the message
       int32* part_keys = new int32[size];
-      request_msg.mutable_keys->ExtractSubrange(0, size, part_keys);
-      parameters_.keys.insert(parameters_keys.end(), 
-                              part_keys, part_keys + size);
+      request_msg.mutable_keys()->ExtractSubrange(0, size, part_keys);
+      memcpy(parameters_.keys + cur, part_keys, size);
+      
       delete[] part_keys;
       // Extract parameter values from the message
       float32* part_values = new float32[size];
-      request_msg.mutable_values->ExtractSubrange(0, size, part_values);
-      parameters_.values.insert(paramters_values.end(),
-                                part_values, part_values + size);
+      request_msg.mutable_values()->ExtractSubrange(0, size, part_values);
+      memcpy(parameters_.values + cur, part_values, size);
       delete[] part_values;
+      
+      cur += size;
     }
   }
 }
