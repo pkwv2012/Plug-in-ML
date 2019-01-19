@@ -13,8 +13,11 @@ namespace rpscc {
 
 DEFINE_string(net_interface, "",
   "Name of the net interface used by the node.");
-DEFINE_string(master_ip_port, "",
-  "IP and Port of the first master node.");
+DEFINE_int32(server_port, 8888, "Port used by the server receiver.");
+DEFINE_int32(ring_size, 64, "Size of communicator's message queue.");
+DEFINE_int32(buffer_size, 2048, "Size of each message's buffer.");
+DEFINE_string(master_ip_port, "", "IP and Port of the first master node.");
+
 
 // In Initialize() the server configures itself by sending its IP to the
 // master and receiving related configuration information.
@@ -23,9 +26,10 @@ bool Server::Initialize() {
   // TODO(Song Xu): decide size and port for initialize
   sender_.reset(new ZmqCommunicator());
   receiver_.reset(new ZmqCommunicator());
-  sender_->Initialize(/* size */, true, 1024, /* size */);
+  sender_->Initialize(FLAGS_ring_size, true, 1024, FLAGS_buffer_size);
   sender_->AddIdAddr(0, FLAGS_master_ip_port);
-  receiver_->Initialize(/* size */, false, /* port */, /* size */);
+  receiver_->Initialize(FLAGS_ring_size, false, FLAGS_server_port,
+    FLAGS_buffer_size);
 
   // Send the server local ip to master and receive config information
   std::string ip = "";
