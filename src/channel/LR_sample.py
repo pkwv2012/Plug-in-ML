@@ -10,6 +10,7 @@ def transfer2Agent(values, keys, w):
     w.write(struct.pack('i', len(values)))
     for v in values:
         w.write(struct.pack('f', v))
+    w.seek(4*(101)) #________________________________________________________
     for k in keys:
         w.write(struct.pack('i', k))
 
