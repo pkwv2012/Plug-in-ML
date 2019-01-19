@@ -71,7 +71,7 @@ int32 Partition::GetServerByKey(int32 key) {
   return left;
 }
 
-int32 Partition::NextEnding(std::vector<int32>& keys, int32 start, 
+int32 Partition::NextEnding(std::vector<int32> keys, int32 start, 
                             int32& server_id) {
   server_id = GetServerByKey(keys[start]);
   int32 upper_bound = part_vec_[server_id + 1];
