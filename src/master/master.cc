@@ -49,6 +49,9 @@ void Master::MainLoop() {
         ProcessRegisterMsg(&msg);
         if (config_.Ready()) {
           config_.GeneratePartition();
+          for (auto pr: config_.get_id_to_addr()) {
+            sender_->AddIdAddr(pr.first, pr.second);
+          }
           DeliverConfig();
         }
         break;

@@ -58,6 +58,10 @@ class TaskConfig {
   // Generate partition
   void GeneratePartition();
 
+  std::unordered_map<int32_t, std::string>& get_id_to_addr() {
+    return id_to_addr_;
+  }
+
  private:
   int32 worker_num_;
   int32 server_num_;

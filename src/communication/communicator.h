@@ -42,9 +42,9 @@ class Communicator {
   virtual int32 Receive(std::string* message) = 0;
 
   // Add an <id, addr> to the id_to_addr_
-  virtual bool AddIdAddr(int32 id, std::string addr);
+  virtual bool AddIdAddr(int32 id, std::string addr) = 0;
   // Delete an <id, addr> from id_to_addr_
-  virtual bool DeleteId(int32 id);
+  virtual bool DeleteId(int32 id) = 0;
 };
 
 }  // namespace rpscc
