@@ -13,8 +13,8 @@
 #include <utility>
 
 #include "src/agent/partition.h"
-#include "src/channel/fifo.h"
-#include "src/channel/sharedmemory.h"
+//#include "src/channel/fifo.h"
+#include "src/channel/shared_memory.h"
 #include "src/communication/communicator.h"
 #include "src/util/common.h"
 
