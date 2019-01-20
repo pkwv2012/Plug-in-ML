@@ -12,7 +12,7 @@ int main(int argc, char* argv[]) {
   int max_size = 128;
   int port;
   sscanf(argv[2], "%d", &port);
-  if (argv[1][0] == 'r'){
+  if (argv[1][0] == 'r') {
     printf("You create a receiver\n");
     comm.Initialize(16, false, port, 128);
     while (1) {

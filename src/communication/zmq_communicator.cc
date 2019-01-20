@@ -1,6 +1,7 @@
 // Copyright 2018 The RPSCC Authors. All Rights Reserved.
 // Author : Chenbin Zhang (zcbin@pku.edu.cn)
 
+#include <cstring>
 #include "src/communication/zmq_communicator.h"
 
 namespace rpscc {
@@ -28,13 +29,11 @@ void ZmqCommunicator::Finalize() {
 int32 ZmqCommunicator::Send(int32 dst_id, const char* const message,
                             int32 len) {
   char* mix_message = new char[buffer_size_];
-  snprintf(mix_message, buffer_size_, "%d,%s", dst_id, message);
-  for (int i = 0; i < 12; i++) {
-    if (mix_message[i] == ',') {
-      len = len + i + 1;
-      break;
-    }
-  }
+  snprintf(mix_message, buffer_size_, "%d,", dst_id);
+  int32 offset = strlen(mix_message);
+  memcpy(mix_message + offset, message, len);
+  len += offset;
+  
   fifo_ring_.Add(mix_message, len);
   printf("Add to ring: %s | size = %d\n", mix_message, len);
   return len;
@@ -52,7 +51,7 @@ int32 ZmqCommunicator::Receive(char* message, const int32 max_size) {
 int32 ZmqCommunicator::Receive(std::string* message) {
   char* char_message = new char[buffer_size_];
   int len = fifo_ring_.Fetch(char_message, buffer_size_);
-  message->assign(char_message);
+  message->assign(char_message, len);
   delete char_message;
   return len;
 }

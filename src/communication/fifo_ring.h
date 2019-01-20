@@ -32,7 +32,7 @@ class FifoRing {
  private:
   // Size of the ring.
   int32 ring_size_;
-  // The body or the ring
+  // The body of the ring
   char** ring_;
   // data_sizes_ stores all data blocks' size information.
   int* data_sizes_;

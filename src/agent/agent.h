@@ -52,7 +52,7 @@ class Agent {
   // agent is listening.
   int32 local_id_;
   std::string local_ip_;
-  std::string listen_port_;
+  int16 listen_port_;
   // Global information about rpscc
   int32 agent_num_;
   int32 server_num_;

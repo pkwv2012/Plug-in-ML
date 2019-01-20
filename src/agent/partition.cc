@@ -43,6 +43,7 @@ bool Partition::Initialize(int32 key_range, int32 server_num, int* part_vec) {
   for (int32 i = 0; i <= server_num; i++) {
     part_vec_.push_back(part_vec[i]);
   }
+
   return true;
 }
 
