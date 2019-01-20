@@ -40,7 +40,8 @@ class Agent {
                   std::string grad_fifo_name,
                   std::string para_memory_name,
                   std::string grad_memory_name,
-                  int32 shared_memory_size);
+                  int32 shared_memory_size,
+                  std::string master_addr);
   // Finalize the agent
   void Finalize();
   // To start the agent

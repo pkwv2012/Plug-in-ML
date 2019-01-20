@@ -36,8 +36,7 @@ int32 ZmqCommunicator::Send(int32 dst_id, const char* const message,
     }
   }
   fifo_ring_.Add(mix_message, len);
-  printf("Add: %s, %d\n", mix_message, len);
-  delete mix_message;
+  printf("Add to ring: %s | size = %d\n", mix_message, len);
   return len;
 }
 int32 ZmqCommunicator::Send(int32 dst_id, const std::string& message) {
@@ -47,7 +46,7 @@ int32 ZmqCommunicator::Send(int32 dst_id, const std::string& message) {
 
 int32 ZmqCommunicator::Receive(char* message, const int32 max_size) {
   int len = fifo_ring_.Fetch(message, max_size);
-  printf("Fetch: %s, %d\n", message, len);
+  printf("Fetch from ring: %s | size = %d\n", message, len);
   return len;
 }
 int32 ZmqCommunicator::Receive(std::string* message) {
@@ -58,6 +57,7 @@ int32 ZmqCommunicator::Receive(std::string* message) {
   return len;
 }
 
+// This is a static function.
 void* ZmqCommunicator::Produce(void* arg) {
   ZmqCommunicator* zc = reinterpret_cast<ZmqCommunicator*>(arg);
   static char* message = new char[zc->buffer_size_];
@@ -71,6 +71,8 @@ void* ZmqCommunicator::Produce(void* arg) {
     sleep(1);
   }
 }
+
+// This is a static function.
 void* ZmqCommunicator::Consume(void* arg) {
   ZmqCommunicator* zc = reinterpret_cast<ZmqCommunicator*>(arg);
   static char *mix_message = new char[zc->buffer_size_];
@@ -96,12 +98,12 @@ void* ZmqCommunicator::Consume(void* arg) {
     std::map<int32, std::string>::iterator iter =
                                   zc->id_to_addr_.find(dst_id);
     if (iter == zc->id_to_addr_.end()) {
-      printf("Destination Node id error %d\n", dst_id);
+      printf("Destination Node id error: dst_id = %d\n", dst_id);
       printf("Can not send this message to destination.");
       continue;
     }
     zc->send_recv_.Send(iter->second, message, len);
-    printf("Send: %s, %d\n", message, len);
+    printf("Send message: %s | size = %d\n", message, len);
     sleep(1);
   }
 }
@@ -112,7 +114,7 @@ bool ZmqCommunicator::AddIdAddr(int32 id, std::string addr) {
     return false;
   } else {
     id_to_addr_.insert(std::make_pair(id, addr));
-    printf("AddIdAddr: %d, %s\n", id, addr.c_str());
+    printf("AddIdAddr: id = %d | addr = %s\n", id, addr.c_str());
     return true;
   }
 }

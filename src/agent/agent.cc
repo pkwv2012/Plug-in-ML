@@ -12,6 +12,8 @@
 #include "src/util/logging.h"
 #include "src/util/network_util.h"
 
+using namespace std;
+
 namespace rpscc {
 
 // Macro for getting the Agent's IP address
@@ -41,8 +43,12 @@ bool Agent::Initialize(std::string para_fifo_name,
                        std::string grad_fifo_name,
                        std::string para_memory_name,
                        std::string grad_memory_name,
-                       int32 shared_memory_size) {
+                       int32 shared_memory_size,
+                       std::string master_addr) {
   // 1.Initialize sender
+  
+  cout << "1.Initialize sender" << endl;
+  
   sender_.reset(new ZmqCommunicator());
   if (sender_.get() == NULL) {
     printf("Initialize sender failed.");
@@ -51,12 +57,15 @@ bool Agent::Initialize(std::string para_fifo_name,
   sender_->Initialize(64/* ring_size */, true, 1024/* listen_port */);
   
   // 2.Initialize receiver
+  
+  cout << "2.Initialize receiver" << endl;
+  
   receiver_.reset(new ZmqCommunicator());
   if (receiver_.get() == NULL) {
     printf("Initialize receiver failed.");
     return false;
   }
-  receiver_->Initialize(64/* ring_size */, false, 1024/* listen_port */);
+  receiver_->Initialize(64/* ring_size */, false, 5555/* listen_port */);
   
   // 3 Exchange messages with master
   // 3_1.Send this agent's local_ip_ to master, and receive config information
@@ -66,6 +75,9 @@ bool Agent::Initialize(std::string para_fifo_name,
     LOG(ERROR) << "Cannot find IP from the interface provided.";
     return false;
   }
+  
+  cout << "3_1 Agent's ip is " << ip << endl; 
+  
   local_ip_ = ip;
   listen_port_ = "5555";
   Message msg_send;
@@ -82,10 +94,13 @@ bool Agent::Initialize(std::string para_fifo_name,
   msg_send.set_send_id(-1);
   msg_send.set_allocated_register_msg(&reg_msg);
   msg_send.SerializeToString(&reg_str);
+  cout << "3_1 Send register string to master" << endl;
+  sender_->AddIdAddr(0, master_addr);
   if (sender_->Send(0, reg_str) == -1) {
     LOG(ERROR) << "Cannot send register message to master";
     return false;
   }
+  cout << "3_2 Receive config string from master" << endl;
   if (receiver_->Receive(&config_str) == -1) {
     LOG(ERROR) << "Error in receiving message from master";
     return false;
@@ -99,6 +114,10 @@ bool Agent::Initialize(std::string para_fifo_name,
   server_num_ = config_msg.server_num();
   key_range_  = config_msg.key_range();
   
+  cout << "3_2 Initialization " << "local_id = " << local_id_
+       << " agent_num_ = " << agent_num_ << " server_num_ = "
+       << server_num_ << " key_range_ = " << key_range_ << endl;
+  
   // 3_3.Add <server_id, server_addr> pairs to the sender_'s <Id, Addr> map.
   for (int32 i = 0; i < server_num_; i++) {
     std::string server_i_ip_port = config_msg.node_ip_port(
@@ -107,7 +126,13 @@ bool Agent::Initialize(std::string para_fifo_name,
     sender_->AddIdAddr(server_i_id, server_i_ip_port);
   }
   
+  cout << "3_3.Add <server_id, server_addr> pairs to the sender_'s"
+       << " <Id, Addr> map." << endl;
+  
   // 3_4.Initialize the partition_.
+  
+  cout << "3_4.Initialize the partition_." << endl;
+  
   int32* part_vec = new int32[server_num_ + 1];
   config_msg.mutable_partition()->ExtractSubrange(0, server_num_ + 1, 
                                                   part_vec);
@@ -115,6 +140,7 @@ bool Agent::Initialize(std::string para_fifo_name,
   delete[] part_vec;
   
   // 4.Initialize the fifo and shared memory
+  cout << "4.Initialize the fifo and shared memory" << endl;
   para_fifo_name_ = para_fifo_name;
   grad_fifo_name_ = grad_fifo_name;
   para_memory_name_ = para_memory_name;
@@ -134,6 +160,7 @@ bool Agent::Initialize(std::string para_fifo_name,
   para_memory_.Initialize(para_memory_name_.c_str());
   grad_memory_.Initialize(grad_memory_name_.c_str());
   
+  cout << "Agent's initialization is done" << endl;
   return true;
 }
 
@@ -191,6 +218,7 @@ bool Agent::Push() {
   start = 0;
   size = gradients_.size;
   while (start < size) {
+    // *@&(#&(@&$(&@)!*$)@*!)$)!@$)!@$)@)
     end = partition_.NextEnding(std::vector<int>(parameters_.keys, 
                               parameters_.keys + 100), start, server_id);
     request_msg.clear_keys();
@@ -234,6 +262,7 @@ bool Agent::Pull() {
   start = 0;
   size = parameters_.size;
   while (start < size) {
+    // ^&(@#&@)#*)@!*)#*@!)#*)!@*)*)
     end = partition_.NextEnding(std::vector<int>(parameters_.keys, 
                               parameters_.keys + 100), start, server_id);
     server_set.insert(server_id);
