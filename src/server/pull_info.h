@@ -16,13 +16,13 @@ class PullInfo {
     length_ = 0;
     id_ = 0;
   }
-  inline uint32 Length();
-  inline void AddKey(uint32 key);
-  inline uint32 Key(uint32 index);
-  inline uint32 get_id() {
+  uint32 Length();
+  void AddKey(uint32 key);
+  uint32 Key(uint32 index);
+  uint32 get_id() {
     return id_;
   }
-  inline void set_id(uint32 id) {
+  void set_id(uint32 id) {
     id_ = id;
   }
 

@@ -6,16 +6,16 @@
 namespace rpscc {
 
 // Everytime only one key is added to its vector
-inline void PullInfo::AddKey(uint32 key) {
+void PullInfo::AddKey(uint32 key) {
   keys_.push_back(key);
   length_++;
 }
 
-inline uint32 PullInfo::Key(uint32 index) {
+uint32 PullInfo::Key(uint32 index) {
   return keys_[index];
 }
 
-inline uint32 PullInfo::Length() {
+uint32 PullInfo::Length() {
   return length_;
 }
 

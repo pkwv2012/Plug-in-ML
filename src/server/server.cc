@@ -4,7 +4,6 @@
 #include <string>
 
 #include "gflags/gflags.h"
-#include "src/message/message.pb.h"
 #include "src/server/server.h"
 #include "src/util/logging.h"
 #include "src/util/network_util.h"
@@ -39,10 +38,10 @@ bool Server::Initialize() {
     return false;
   }
   local_address_ = ip;
-  Message msg_send();
-  Message msg_recv();
-  Message_RegisterMessage reg_msg();
-  Message_ConfigMessage config_msg();
+  Message msg_send;
+  Message msg_recv;
+  Message_RegisterMessage reg_msg;
+  Message_ConfigMessage config_msg;
   std::string reg_str;
   std::string config_str;
   reg_msg.set_ip(local_address_);
@@ -107,7 +106,7 @@ bool Server::Initialize() {
   }
 
   // Initialize map from worker ID to version buffer index
-  for (uint32 i = 0; i < agent_num; ++i)
+  for (uint32 i = 0; i < agent_num_; ++i)
     id_to_index_[config_msg.worker_id(i)] = i;
 
   // By default, all parameters are initialized to be zero
@@ -131,19 +130,20 @@ bool Server::Initialize() {
 bool Server::RespondToAll() {
   while (pull_request_.empty() == false) {
     std::string reply_str;
-    PullInfo request = pull_request_.pop();
-    Message msg_send();
-    Message_RequestMessage reply_msg();
+    PullInfo request = pull_request_.front();
+    pull_request_.pop();
+    Message msg_send;
+    Message_RequestMessage reply_msg;
     reply_msg.set_request_type(Message_RequestMessage_RequestType_key_value);
     uint32 len = request.Length();
     for (uint32 i = 0; i < len; ++i) {
       reply_msg.add_keys(request.Key(i));
-      reply_msg.add_values(parameters[request.Key(i) - start_key_]);
+      reply_msg.add_values(parameters_[request.Key(i) - start_key_]);
     }
     msg_send.set_send_id(local_id_);
     msg_send.set_recv_id(request.get_id());
     msg_send.set_message_type(Message_MessageType_request);
-    msg_send.set_allocated_request_msg(reply_msg);
+    msg_send.set_allocated_request_msg(&reply_msg);
     msg_send.SerializeToString(&reply_str);
 
     // TODO(Song Xu): we'd better try more times before give up replying, and
@@ -162,7 +162,8 @@ bool Server::RespondToAll() {
 void Server::UpdateParameter() {
   std::vector<float> update(parameter_length_, 0.0f);
   for (uint32 i = 0; i < agent_num_; ++i) {
-    KeyValueList update_i = version_buffer_[i].pop();
+    KeyValueList update_i = version_buffer_[i].front();
+    version_buffer_[i].pop();
     uint32 len = update_i.Length();
     for (uint32 j = 0; j < len; ++j)
       update[update_i.Key(j) - start_key_] += update_i.Value(j);
@@ -178,9 +179,9 @@ void Server::UpdateParameter() {
 // UpdateParameter() and ResponseAll() will be called.
 void Server::Start() {
   while (true) {
-    std:string recv_str;
+    std::string recv_str;
     receiver_->Receive(&recv_str);
-    Message msg_recv();
+    Message msg_recv;
     msg_recv.ParseFromString(recv_str);
     uint32 sender_id = msg_recv.send_id();
 
@@ -204,7 +205,7 @@ void Server::Start() {
 // If a round of version update is finished after the push, UpdateParameter()
 // and RespondToAll() will be called to return the new version of parameters
 // to the blocked workers.
-void Server::ServePush(uint32 &sender_id,
+void Server::ServePush(uint32 sender_id,
   const Message_RequestMessage &request) {
   if (id_to_index_.find(sender_id) == id_to_index_.end()) {
     LOG(ERROR) << "Got push request from worker " << sender_id
@@ -212,18 +213,18 @@ void Server::ServePush(uint32 &sender_id,
     return;
   }
   finish_count_[version_buffer_[id_to_index_[sender_id]].size()]++;
-  KeyValueList worker_update();
+  KeyValueList worker_update;
   for (uint32 i = 0; i < request.keys_size(); ++i)
     worker_update.AddPair(request.keys(i), request.values(i));
   version_buffer_[id_to_index_[sender_id]].push(worker_update);
 
   // Acknowledgement from server
   std::string send_str;
-  Message_RequestMessage ack_msg();
-  Message msg_send();
+  Message_RequestMessage ack_msg;
+  Message msg_send;
   ack_msg.set_request_type(Message_RequestMessage_RequestType_ack);
   msg_send.set_message_type(Message_MessageType_request);
-  msg_send.set_allocated_request_msg(ack_msg);
+  msg_send.set_allocated_request_msg(&ack_msg);
   msg_send.set_send_id(local_id_);
   msg_send.set_recv_id(sender_id);
   msg_send.SerializeToString(&send_str);
@@ -247,7 +248,7 @@ void Server::ServePush(uint32 &sender_id,
 // updates that the worker has already committed but is not yet processed by
 // the server. If the number of updates in version_buffer is too large, the
 // pull request will be blocked.
-void Server::ServePull(uint32 &sender_id,
+void Server::ServePull(uint32 sender_id,
   const Message_RequestMessage &request) {
   if (id_to_index_.find(sender_id) == id_to_index_.end()) {
     LOG(ERROR) << "Got pull request from worker " << sender_id
@@ -258,17 +259,17 @@ void Server::ServePull(uint32 &sender_id,
   // A block message will be sent to the sender agent
   if (version_buffer_[id_to_index_[sender_id]].size()
     >= consistency_bound_) {
-    PullInfo blocked_request();
+    PullInfo blocked_request;
     for (uint32 i = 0; i < request.keys_size(); ++i)
       blocked_request.AddKey(request.keys(i));
     pull_request_.push(blocked_request);
 
     std::string send_str;
-    Message_RequestMessage block_msg();
-    Message msg_send();
+    Message_RequestMessage block_msg;
+    Message msg_send;
     block_msg.set_request_type(Message_RequestMessage_RequestType_block);
     msg_send.set_message_type(Message_MessageType_request);
-    msg_send.set_allocated_request_msg(block_msg);
+    msg_send.set_allocated_request_msg(&block_msg);
     msg_send.set_send_id(local_id_);
     msg_send.set_recv_id(sender_id);
     msg_send.SerializeToString(&send_str);
@@ -278,16 +279,16 @@ void Server::ServePull(uint32 &sender_id,
     }
   } else {
     std::string reply_str;
-    Message msg_send();
-    Message_RequestMessage reply_msg();
+    Message msg_send;
+    Message_RequestMessage reply_msg;
     reply_msg.set_request_type(
       Message_RequestMessage_RequestType_key_value);
     for (uint32 i = 0; i < request.keys_size(); ++i) {
       reply_msg.add_keys(request.keys(i));
-      reply_msg.add_values(parameters[request.keys(i) - start_key_]);
+      reply_msg.add_values(parameters_[request.keys(i) - start_key_]);
     }
     msg_send.set_message_type(Message_MessageType_request);
-    msg_send.set_allocated_request_msg(reply_msg);
+    msg_send.set_allocated_request_msg(&reply_msg);
     msg_send.set_send_id(local_id_);
     msg_send.set_recv_id(sender_id);
     msg_send.SerializeToString(&reply_str);

@@ -8,7 +8,7 @@
 namespace rpscc {
 
   // server_main defines the main function for a server process.
-  int main() {
+  int main(int argc, char **argv) {
     gflags::ParseCommandLineFlags(&argc, &argv, true);
     Server server;
     if (server.Initialize() == false) {

@@ -8,7 +8,6 @@ cmake_minimum_required(VERSION 3.5)
 include("FindProtobuf")
 find_package(Protobuf REQUIRED)
 
-
 add_definitions("-std=c++14")
 
 # How to turn on the multi-thread flag of Gflags?
@@ -29,5 +28,5 @@ add_subdirectory(src/message)
 add_subdirectory(src/communication)
 add_subdirectory(src/master)
 add_subdirectory(src/util)
+add_subdirectory(src/server)
 #add_subdirectory(src/channel)
-add_subdirectory(src/agent)

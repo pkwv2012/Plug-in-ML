@@ -17,16 +17,16 @@ class KeyValueList {
     length_ = 0;
   }
 
-  inline void AddPair(uint32 key, float value);
-  inline uint32 Key(uint32 index);
-  inline float Value(uint32 index);
-  inline uint32 Length();
+  void AddPair(uint32 key, float value);
+  uint32 Key(uint32 index);
+  float Value(uint32 index);
+  uint32 Length();
 
  private:
   uint32 length_;
 
   std::vector<uint32> keys_;
-  std::vector<float> parameters_;
+  std::vector<float> values_;
 };
 
 }  // namespace rpscc
