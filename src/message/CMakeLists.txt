@@ -3,6 +3,7 @@
 set(temp_CURRENT_DIR "${PROJECT_SOURCE_DIR}/src/message")
 message("pwd = ${temp_CURRENT_DIR}")
 add_library(message message.pb.cc)
+target_link_libraries(messaage ${PROTOBUF_LIBRARIES})
 
 #add_custom_command(
 #        OUTPUT message.pb.h message.pb.cc
