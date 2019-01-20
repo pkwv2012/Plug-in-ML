@@ -13,6 +13,7 @@
 
 DEFINE_int32(heartbeat_timeout, 30, "The maximum time to decide "
   "whether the node is offline");
+DEFINE_int32(listen_port, 16666, "The listening port of cluster.");
 
 namespace rpscc {
 
@@ -27,9 +28,12 @@ void Master::Initialize(const int16 &listen_port) {
 }
 
 void Master::MainLoop() {
+  std::cout << "Main loop";
   while (true) {
     std::string* msg_str;
+    LOG(INFO) << "Receiving";
     receiver_->Receive(msg_str);
+    LOG(INFO) << "Receive finish";
     Message msg;
     msg.ParseFromString(*msg_str);
     switch (msg.message_type()) {
@@ -48,6 +52,7 @@ void Master::MainLoop() {
         // after master received the entire register message.
         ProcessRegisterMsg(&msg);
         if (config_.Ready()) {
+          LOG(INFO) << "Cluster ready!";
           config_.GeneratePartition();
           for (auto pr: config_.get_id_to_addr()) {
             sender_->AddIdAddr(pr.first, pr.second);
@@ -128,6 +133,14 @@ int32_t Master::Initialize(const std::string &master_ip_port) {
       ++ count;
     }
   }
+  std::cout << "Start Initialize";
+  this->sender_.reset(new ZmqCommunicator());
+  LOG(INFO) << "Create sender" << std::endl;
+  this->sender_->Initialize(16, true, FLAGS_listen_port, 2048);
+  LOG(INFO) << "Sender finish" << std::endl;
+  this->receiver_.reset(new ZmqCommunicator());
+  this->receiver_->Initialize(16, false, FLAGS_listen_port, 2048);
+  LOG(INFO) << "Master init finish";
   return count;
 }
 
