@@ -10,6 +10,8 @@
 using namespace rpscc;
 using namespace std;
 
+// In this test, the <ip>:<port> list is as follow
+
 void Init() {
   Agent agent;
   string para_fifo_name = "cute_para_fifo";
@@ -84,6 +86,10 @@ void Serve() {
   
 }
 
+void Work() {
+
+}
+
 int main(int argc, char* argv[]) {
   gflags::ParseCommandLineFlags(&argc, &argv, false);
   
@@ -100,7 +106,10 @@ int main(int argc, char* argv[]) {
   }
   
   // Test AgentWork
-  
+  int pppid = fork();
+  if (pppid == 0) {
+    Serve();
+  }
   
   
   cout << "done" << endl;
