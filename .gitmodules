@@ -1,6 +1,6 @@
 [submodule "thrid_party/gflags"]
-	path = thrid_party/gflags
+	path = third_party/gflags
 	url = https://github.com/gflags/gflags.git
 [submodule "thrid_party/gtest"]
-	path = thrid_party/gtest
+	path = third_party/gtest
 	url = https://github.com/google/googletest.git
