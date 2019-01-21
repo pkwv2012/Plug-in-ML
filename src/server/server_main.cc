@@ -5,17 +5,13 @@
 #include "src/util/logging.h"
 #include "src/server/server.h"
 
-namespace rpscc {
-
-  // server_main defines the main function for a server process.
-  int main(int argc, char **argv) {
-    gflags::ParseCommandLineFlags(&argc, &argv, true);
-    Server server;
-    if (server.Initialize() == false) {
-      LOG(ERROR) << "Failed to initialize server.";
-      return 1;
-    }
-    server.Start();
+// server_main defines the main function for a server process.
+int main(int argc, char **argv) {
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  rpscc::Server server;
+  if (server.Initialize() == false) {
+    LOG(ERROR) << "Failed to initialize server.";
+    return 1;
   }
-
-}  // namespace rpscc
+  server.Start();
+}
