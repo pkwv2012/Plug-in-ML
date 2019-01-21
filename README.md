@@ -7,6 +7,8 @@ RPSCC project is a robust parameter server with configurable consistency.
 ```sh
 git clone https://github.com/purkyston/rpscc
 cd rpscc
+git submodule init
+git submodule update
 mkdir build & cd build
 cmake ..
 make
