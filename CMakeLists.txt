@@ -7,6 +7,10 @@ cmake_minimum_required(VERSION 3.5)
 #------------------------------------------------------------------------------------------------
 include("FindProtobuf")
 find_package(Protobuf REQUIRED)
+message("protobuf_lib=${PROTOBUF_LIBRARY}\n")
+message("protobuf_include_dir=${PROTOBUF_INCLUDE_DIR}\n")
+message("protobuf_version=${PROTOBUF_VERSION}\n")
+include_directories(${PROTOBUF_INCLUDE_DIR})
 
 add_definitions("-std=c++14")
 
@@ -29,4 +33,4 @@ add_subdirectory(src/communication)
 add_subdirectory(src/master)
 add_subdirectory(src/util)
 add_subdirectory(src/server)
-#add_subdirectory(src/channel)
+add_subdirectory(src/channel)

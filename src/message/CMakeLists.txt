@@ -3,7 +3,7 @@
 set(temp_CURRENT_DIR "${PROJECT_SOURCE_DIR}/src/message")
 message("pwd = ${temp_CURRENT_DIR}")
 add_library(message message.pb.cc)
-target_link_libraries(messaage ${PROTOBUF_LIBRARIES})
+target_link_libraries(message ${PROTOBUF_LIBRARY})
 
 #add_custom_command(
 #        OUTPUT message.pb.h message.pb.cc
@@ -20,4 +20,7 @@ target_link_libraries(messaage ${PROTOBUF_LIBRARIES})
 
 #protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${PROJECT_SOURCE_DIR}/src/message/message.proto)
 #message("hdr=${PROTO_HDRS} src=${PROTO_SRCS} ...")
+
+add_executable(message_test message_test.cc)
+target_link_libraries(message_test message)
 
