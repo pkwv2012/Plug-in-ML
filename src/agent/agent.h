@@ -40,7 +40,6 @@ class Agent {
                   std::string grad_fifo_name,
                   std::string para_memory_name,
                   std::string grad_memory_name,
-                  int32 shared_memory_size,
                   std::string master_addr);
   // Finalize the agent
   void Finalize();
@@ -74,7 +73,6 @@ class Agent {
   std::string grad_memory_name_;
   SharedMemory para_memory_;
   SharedMemory grad_memory_;
-  int32 shared_memory_size_;
   
   // Key-value list for pushing
   std::vector<int32> keys_;

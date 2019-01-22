@@ -17,6 +17,7 @@ using namespace std;
 // Master 0 : 127.0.0.1       : 5000
 // Agent  1 : 127.0.0.1       : 5555
 // Server 2 : 127.0.0.1       : 5005
+// Server 3 : 129.0.0.1       : 5006
 
 void Init() {
   Agent agent;
@@ -24,11 +25,10 @@ void Init() {
   string grad_fifo_name = "/tmp/cute_grad_fifo";
   string para_memory_name = "/cute_para_mem";
   string grad_memory_name = "/cute_grad_mem";
-  int32 shared_memory_size = 1024;
   string master_addr = "127.0.0.1:5000";
   agent.Initialize(para_fifo_name, grad_fifo_name,
                    para_memory_name, grad_memory_name,
-                   shared_memory_size, master_addr);
+                   master_addr);
   cout << "Agent: Start" << endl;
   agent.Start();
 }
@@ -51,27 +51,32 @@ void Mast() {
   sender.Initialize(64/* ring_size */, true, 1024/* listen_port */);
   receiver.Initialize(64, false, master_port);
   
-  while (1) {
+  while (true) {
+    cout << "Master: Wait for agent's registration" << endl;
     receiver.Receive(&reg_str);
     msg_recv.ParseFromString(reg_str);
     reg_msg = msg_recv.register_msg();
-    cout << "Agent's ip = " << reg_msg.ip() << " port = " << reg_msg.port()
-         << " is_server = " << reg_msg.is_server() << endl;
+    cout << "Master: Agent's ip = " << reg_msg.ip() << " port = " 
+         << reg_msg.port() << " is_server = " << reg_msg.is_server() << endl;
     
     string agent_addr = reg_msg.ip() + ":" + to_string(reg_msg.port());
     sender.AddIdAddr(1, agent_addr);
     
     config_msg->set_worker_num(1);
-    config_msg->set_server_num(1);
-    config_msg->set_key_range(100);
+    config_msg->set_server_num(2);
+    config_msg->set_key_range(5);
     
     config_msg->add_node_ip_port("127.0.0.1:5000");
     config_msg->add_node_ip_port(agent_addr);
     config_msg->add_node_ip_port("127.0.0.1:5005");
+    config_msg->add_node_ip_port("127.0.0.1:5006");
 
     config_msg->add_partition(0);
-    config_msg->add_partition(100);
+    config_msg->add_partition(3);
+    config_msg->add_partition(5);
+    
     config_msg->add_server_id(2);
+    config_msg->add_server_id(3);
     config_msg->add_worker_id(1);
     config_msg->add_master_id(0);
     config_msg->set_bound(1);
@@ -87,11 +92,15 @@ void Mast() {
     break;
   }
   while (true) {
-    sleep(10);
-    return;
+    cout << "Master: Wait for agent's terminate request" << endl;
+    receiver.Receive(&reg_str);
+    msg_recv.ParseFromString(reg_str);
+    cout << "Master: Receive " << msg_recv.DebugString() << endl;
   }
 }
 
+// In the future test, the port and key_value will be the parameters of Serve.
+// So I can emit the function Serve3().
 void Serve() {
   cout << "Server: Start" << endl;
   ZmqCommunicator sender;
@@ -108,46 +117,96 @@ void Serve() {
   receiver.Initialize(64, false, server_port);
   sender.AddIdAddr(1, "127.0.0.1:5555");
   while (true) {
-    cout << "Server: Wait for agent's push request" << endl;
+    cout << "Server: Wait for agent's request" << endl;
     int rc = receiver.Receive(&msg_str);
     cout << "Server: Receive " << rc << " bytes from agent" << endl;
     msg.ParseFromString(msg_str);
     cout << "Server: Receive " << msg.DebugString() << endl;
     
-    cout << "Server: Wait for agents' pull request" << endl;
-    rc = receiver.Receive(&msg_str);
-    cout << "Server: Receive " << rc << " bytes from agent" << endl;
+    if (msg.request_msg().request_type() == 
+        Message_RequestMessage_RequestType_key) {
+      cout << "Server: Get pull request from agent" << endl;
+      cout << "Server: Try to return parameters to agent" << endl;
+      
+      req_msg = new Message_RequestMessage();
+      req_msg->set_request_type(Message_RequestMessage_RequestType_key_value);
+      req_msg->add_keys(0);
+      req_msg->add_keys(1);
+      req_msg->add_keys(2);
+      req_msg->add_values(0);
+      req_msg->add_values(10);
+      req_msg->add_values(20);
+      msg.clear_request_msg();
+      
+      msg.set_allocated_request_msg(req_msg);
+      msg.set_send_id(2);
+      msg.set_recv_id(1);
+      msg.set_message_type(Message_MessageType_request);
+      
+      msg.SerializeToString(&msg_str);
+      cout << "Server: Return parameters to agent" << endl;
+      sender.Send(1, msg_str);
+    } else {
+      cout << "Server: Get push request from agent" << endl;
+      cout << "Server: I just do nothing ╮(╯▽╰)╭" << endl;
+    }
+  }
+}
+
+void Serve3() {
+  cout << "Server3: Start" << endl;
+  ZmqCommunicator sender;
+  ZmqCommunicator receiver;
+  int16 server_port = 5006;
+  
+  Message msg;
+  
+  Message_RequestMessage* req_msg;
+  
+  string msg_str;
+  
+  sender.Initialize(64, true, 1024);
+  receiver.Initialize(64, false, server_port);
+  sender.AddIdAddr(1, "127.0.0.1:5555");
+  while (true) {
+    cout << "Server3: Wait for agent's request" << endl;
+    int rc = receiver.Receive(&msg_str);
+    cout << "Server3: Receive " << rc << " bytes from agent" << endl;
     msg.ParseFromString(msg_str);
-    cout << "Server: Receive " << msg.DebugString() << endl;
+    cout << "Server3: Receive " << msg.DebugString() << endl;
     
-    cout << "Server: Try to return parameters to agent" << endl;
-    req_msg = new Message_RequestMessage();
-    req_msg->set_request_type(Message_RequestMessage_RequestType_key_value);
-    req_msg->add_keys(0);
-    req_msg->add_keys(1);
-    req_msg->add_keys(2);
-    req_msg->add_values(20);
-    req_msg->add_values(30);
-    req_msg->add_values(40);
-    msg.clear_request_msg();
-    
-    msg.set_allocated_request_msg(req_msg);
-    msg.set_send_id(2);
-    msg.set_recv_id(1);
-    msg.set_message_type(Message_MessageType_request);
-    
-    msg.SerializeToString(&msg_str);
-    cout << "Server: Return parameters to agent" << endl;
-    sender.Send(1, msg_str);
-    sleep(1);
+    if (msg.request_msg().request_type() == 
+        Message_RequestMessage_RequestType_key) {
+      cout << "Server3: Get pull request from agent" << endl;
+      cout << "Server3: Try to return parameters to agent" << endl;
+      
+      req_msg = new Message_RequestMessage();
+      req_msg->set_request_type(Message_RequestMessage_RequestType_key_value);
+      req_msg->add_keys(3);
+      req_msg->add_keys(4);
+      req_msg->add_values(30);
+      req_msg->add_values(40);
+      msg.clear_request_msg();
+      
+      msg.set_allocated_request_msg(req_msg);
+      msg.set_send_id(3);
+      msg.set_recv_id(1);
+      msg.set_message_type(Message_MessageType_request);
+      
+      msg.SerializeToString(&msg_str);
+      cout << "Server3: Return parameters to agent" << endl;
+      sender.Send(1, msg_str);
+    } else {
+      cout << "Server3: Get push request from agent" << endl;
+      cout << "Server3: I just do nothing ╮(╯▽╰)╭" << endl;
+    }
   }
 }
 
 void Work() {
-  cout << "Worker: Press any key to start" << endl;
-  string str;
-  cin >> str;
-  
+  sleep(5);
+  cout << "Worker: Start" << endl;
+  std::string str;
   Fifo para_fifo, grad_fifo;
   SharedMemory para_memory, grad_memory;
   shmstruct parameters, gradients;
@@ -177,31 +236,40 @@ void Work() {
   }
   
   while (true) {
-    cout << "Worker: Prepare gradients for agent" << endl;
+    cout << "Worker: Choose one way to signal Agent: 0/1/2" << endl;
     cin >> str;
-    cout << "Worker: Transfer " << gradients.size << " gradients to agent"
+    if (str == "0") {
+      cout << "Worker: Pull request to agent" << endl;
+      cout << "(key)s are as follows" << endl;
+      for (int i = 0; i < gradients.size; i++) cout << gradients.keys[i] << " ";
+      cout << endl;
+      grad_memory.Write(&gradients);
+      grad_fifo.Signal(0);
+      cout << "Worker: Wait for agent's parameters" << endl;
+      para_fifo.Wait();
+      cout << "Worker: Get parameters from agent" << endl;
+      parameters = *para_memory.Read();
+      cout << "Worker: Get " << parameters.size << " parameters from agent"
+           << endl;
+      cout << "(key, value)s are as follows" << endl;
+      for (int i = 0; i < parameters.size; i++) {
+        cout << "(" << parameters.keys[i] << ", " << parameters.values[i]
+             << ")" << ", ";
+      }
+      cout << endl;
+      cout << "Worker: A pull request's loop is done" << endl;
+    } else if (str == "1") {
+      cout << "Worker: Push request to agent" << endl;
+      cout << "Worker: Transfer " << gradients.size << " gradients to agent"
          << endl;
-    cout << "(key, value)s are as follows" << endl;
-    for (int i = 0; i < gradients.size; i++) {
-      cout << "(" << gradients.keys[i] << ", " << gradients.values[i]
-           << ")" << ", ";
+      grad_memory.Write(&gradients);
+      grad_fifo.Signal(1);
+      cout << "Worker: A push request is done" << endl;
+    } else {
+      cout << "Worker: Terminate request to agent" << endl;
+      grad_fifo.Signal(2);
+      cout << "Worker: A terminate request is done" << endl;
     }
-    cout << endl;
-    grad_memory.Write(&gradients);
-    grad_fifo.Signal();
-    cout << "Worker: Wait for agent's parameters" << endl;
-    para_fifo.Wait();
-    cout << "Worker: Get parameters from agent" << endl;
-    parameters = *para_memory.Read();
-    cout << "Worker: Get " << parameters.size << " parameters from agent"
-         << endl;
-    cout << "(key, value)s are as follows" << endl;
-    for (int i = 0; i < parameters.size; i++) {
-      cout << "(" << parameters.keys[i] << ", " << parameters.values[i]
-           << ")" << ", ";
-    }
-    cout << endl;
-    cout << "Worker: A loop is done" << endl;
   }
 }
 
@@ -224,7 +292,11 @@ int main(int argc, char* argv[]) {
   int pppid = fork();
   if (pppid == 0) {
     sleep(2);
-    Serve();
+    int ppppid = fork();
+    if (ppppid == 0)
+      Serve();
+    else
+      Serve3();
     return 0;
   }
   Work();

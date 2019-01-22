@@ -43,7 +43,6 @@ bool Agent::Initialize(std::string para_fifo_name,
                        std::string grad_fifo_name,
                        std::string para_memory_name,
                        std::string grad_memory_name,
-                       int32 shared_memory_size,
                        std::string master_addr) {
   // 1.Initialize sender
 
@@ -100,6 +99,7 @@ bool Agent::Initialize(std::string para_fifo_name,
   cout << "3_1 Sending register string to master" << endl;
   sender_->AddIdAddr(0, master_addr);
   if (sender_->Send(0, reg_str) == -1) {
+    LOG(INFO) << "Cannot send register message to master" << endl;
     LOG(ERROR) << "Cannot send register message to master";
     return false;
   }
@@ -155,7 +155,6 @@ bool Agent::Initialize(std::string para_fifo_name,
   grad_fifo_name_ = grad_fifo_name;
   para_memory_name_ = para_memory_name;
   grad_memory_name_ = grad_memory_name;
-  shared_memory_size_ = shared_memory_size;
 
   int32 fd = shm_open(para_memory_name_.c_str(), O_RDWR | O_CREAT, FILE_MODE);
   ftruncate(fd, sizeof(struct shmstruct));
@@ -203,13 +202,17 @@ bool Agent::AgentWork() {
     if (signal_type == 0) {
       cout << "Agent: Receive pull request from worker" << endl;
       parameters_ = *grad_memory_.Read();
+      cout << "Agent: Pull size = " << parameters_.size << ": ";
+      for (int32 i = 0; i < parameters_.size; i++) 
+        cout << parameters_.keys[i] << " ";
+      cout << endl;
       cout << "Agent: Try to Pull" << endl;
       Pull();
       cout << "Agent: Write parameters to memory" << endl;
       para_memory_.Write(&parameters_);
       cout << "Agent: parameters_.size = " << parameters_.size << endl;
-      cout << "(key, value)s are as follows:" << endl;
-      for (int32 i = 0; i < gradients_.size; i++) {
+      cout << "Agent: (key, value)s are as follows:" << endl;
+      for (int32 i = 0; i < parameters_.size; i++) {
         cout << "(" << parameters_.keys[i] << ", " << parameters_.values[i]
              << ")" << ", ";
       }
@@ -243,6 +246,7 @@ bool Agent::AgentWork() {
         LOG(INFO) << "Cannot send push message to master" << endl;
         LOG(ERROR) << "Cannot send push message to master";
       }
+      sleep(10);
       cout << "Agent terminates its work" << endl;
       break;
     }
@@ -270,7 +274,6 @@ bool Agent::Push() {
   size = gradients_.size;
   cout << "Agent: gradients_.size = " << gradients_.size << endl;
   while (start < size) {
-    // *@&(#&(@&$(&@)!*$)@*!)$)!@$)!@$)@)
     end = partition_.NextEnding(std::vector<int>(gradients_.keys,
                               gradients_.keys + gradients_.size), 
                               start, server_id);
@@ -328,7 +331,6 @@ bool Agent::Pull() {
   start = 0;
   size = parameters_.size;
   while (start < size) {
-    // ^&(@#&@)#*)@!*)#*@!)#*)!@*)*)
     end = partition_.NextEnding(std::vector<int>(parameters_.keys,
                               parameters_.keys + parameters_.size), 
                               start, server_id);
@@ -341,7 +343,7 @@ bool Agent::Pull() {
     request_msg_ptr->set_request_type(Message_RequestMessage_RequestType_key);
     request_msg_ptr->clear_keys();
     for (int32 i = start; i < end; i++) {
-      request_msg_ptr->add_keys(gradients_.keys[i]);
+      request_msg_ptr->add_keys(parameters_.keys[i]);
     }
     msg_send_recv.set_allocated_request_msg(request_msg_ptr);
     msg_send_recv.set_recv_id(server_id);
@@ -413,9 +415,16 @@ bool Agent::Pull() {
       server_set.erase(msg_send_recv.send_id());
       size = request_msg.keys_size();
       cout << "Agent: Receive " << size << " key_value pairs" << endl;
+      cout << "Agent: cur = " <<  cur << endl;
       // PS: Maybe I will allocate stable space for part_keys and part_values,
       // if I know the maximal number of key-value pairs
       // Extract parameter keys from the message
+      
+      for (int32 i = 0; i < size; i++) {
+        parameters_.keys[cur + i] = request_msg.keys(i);
+        parameters_.values[cur + i] = request_msg.values(i);
+      }
+      /*
       int32* part_keys = new int32[size];
       request_msg.mutable_keys()->ExtractSubrange(0, size, part_keys);
       memcpy(parameters_.keys + cur * 4, part_keys, size * 4);
@@ -425,7 +434,7 @@ bool Agent::Pull() {
       request_msg.mutable_values()->ExtractSubrange(0, size, part_values);
       memcpy(parameters_.values + cur * 4, part_values, size * 4);
       delete[] part_values;
-
+      */
       cur += size;
     }
   }
