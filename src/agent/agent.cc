@@ -192,44 +192,56 @@ bool Agent::Start() {
 }
 
 bool Agent::AgentWork() {
-
   cout << "Agent: Start AgentWork" << endl;  
-  
+  int32 signal_type;
   while (true) {
     // Wait for worker's signal,
     cout << "Agent: Wait for worker's signal" << endl;
-    grad_fifo_.Wait();
-    cout << "Agent: Read gradients from memory" << endl;
-    gradients_ = *grad_memory_.Read();
-    cout << "Agent: gradients_.size = " << gradients_.size << endl;
-    cout << "(key, value)s are as follows:" << endl;
-    for (int32 i = 0; i < gradients_.size; i++) {
-      cout << "(" << gradients_.keys[i] << ", " << gradients_.values[i]
-           << ")" << ", ";
+    signal_type = grad_fifo_.Wait();
+    
+    // case 0: Pull request from worker
+    if (signal_type == 0) {
+      parameters_ = *grad_memory_.Read();
+      cout << "Agent: Try to Pull" << endl;
+      Pull();
+      cout << "Agent: Write parameters to memory" << endl;
+      para_memory_.Write(&parameters_);
+      cout << "Agent: parameters_.size = " << parameters_.size << endl;
+      cout << "(key, value)s are as follows:" << endl;
+      for (int32 i = 0; i < gradients_.size; i++) {
+        cout << "(" << parameters_.keys[i] << ", " << parameters_.values[i]
+             << ")" << ", ";
+      }
+      cout << endl;
+      cout << "Agent: Signal to the worker" << endl;
+      para_fifo_.Signal();
+      cout << "Pull Done" << endl;
+    } else if (signal_type == 1) {
+      cout << "Agent: Read gradients from memory" << endl;
+      gradients_ = *grad_memory_.Read();
+      cout << "Agent: gradients_.size = " << gradients_.size << endl;
+      cout << "(key, value)s are as follows:" << endl;
+      for (int32 i = 0; i < gradients_.size; i++) {
+        cout << "(" << gradients_.keys[i] << ", " << gradients_.values[i]
+             << ")" << ", ";
+      }
+      cout << endl;
+      cout << "Agent: Try to Push" << endl;
+      Push();
+    } else {
+      Message msg_send;
+      msg_send.set_message_type(Message_MessageType_terminate);
+      msg_send.set_send_id(local_id_);
+      msg_send.set_recv_id(0);
+      std::string msg_str;
+      msg_send.SerializeToString(&msg_str);
+      if (sender_->Send(0, msg_str) == -1) {
+        LOG(INFO) << "Cannot send push message to server:" << server_id;
+        LOG(ERROR) << "Cannot send push message to server:" << server_id;
+      }
+      cout << "Agent terminates its work" << endl;
+      break;
     }
-    cout << endl;
-    cout << "Agent: Try to Push" << endl;
-    Push();
-    // Set the key_list_ for pulling
-    // PS: At present, agent just request for all keys from servers
-    for (int32 i = 0; i < 3; i++) {
-      parameters_.keys[i] = i;
-    }
-    parameters_.size = 3;
-    cout << "Agent: Try to Pull" << endl;
-    Pull();
-    cout << "Agent: Write parameters to memory" << endl;
-    para_memory_.Write(&parameters_);
-    cout << "Agent: parameters_.size = " << parameters_.size << endl;
-    cout << "(key, value)s are as follows:" << endl;
-    for (int32 i = 0; i < gradients_.size; i++) {
-      cout << "(" << parameters_.keys[i] << ", " << parameters_.values[i]
-           << ")" << ", ";
-    }
-    cout << endl;
-    cout << "Agent: Signal to the worker" << endl;
-    para_fifo_.Signal();
-    cout << "Agent: A loop is done" << endl;
   }
   return true;
 }
