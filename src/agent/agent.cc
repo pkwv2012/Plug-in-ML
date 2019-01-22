@@ -236,8 +236,8 @@ bool Agent::AgentWork() {
       std::string msg_str;
       msg_send.SerializeToString(&msg_str);
       if (sender_->Send(0, msg_str) == -1) {
-        LOG(INFO) << "Cannot send push message to server:" << server_id;
-        LOG(ERROR) << "Cannot send push message to server:" << server_id;
+        LOG(INFO) << "Cannot send push message to master" << endl;
+        LOG(ERROR) << "Cannot send push message to master";
       }
       cout << "Agent terminates its work" << endl;
       break;
