@@ -45,7 +45,7 @@ int main() {
       store_data.keys[i] = data_read->keys[i];
     }
     write_mem.Write(&store_data);
-    fifo_write.Signal();
+    fifo_write.Signal(1);
   }
   exit(0);
 }

@@ -32,14 +32,15 @@ TEST(ChannelTest, Fifo) {
     Fifo fifo1;
     fifo1.Initialize(fifoname, true);
     fifo1.Open();
-    fifo1.Wait();
+    int sig = fifo1.Wait();
+    EXPECT_EQ(sig, 2);
     cout << "Read process complete." << endl;
   } else {
     sleep(1);
     Fifo fifo2;
     fifo2.Initialize(fifoname, false);
     fifo2.Open();
-    fifo2.Signal();
+    fifo2.Signal(2);
     cout << "Write process complete." << endl;
   }
 }
@@ -56,8 +57,8 @@ TEST(ChannelTest, SharedMemory) {
 
     SharedMemory read_mem;
     read_mem.Initialize(ipc_name_in.c_str());
-
-    fifo_reader.Wait();
+    int sig_read = fifo_reader.Wait();
+    //std::cout << sig_read << std::endl;
 
     shmstruct *data = read_mem.Read();
     cout << "read complete." << endl;
@@ -78,7 +79,7 @@ TEST(ChannelTest, SharedMemory) {
     store_data.keys[0] = 1111L;
     store_data.size = 1;
     write_mem.Write(&store_data);
-    fifo_writer.Signal();
+    fifo_writer.Signal(1);
     cout << "write complete." << endl;
   }
 }
@@ -86,13 +87,15 @@ TEST(ChannelTest, SharedMemory) {
 TEST(ChannelTest, FifoWithPython) {
   // run this test first && then run python_test.py
   // maybe following add the part of auto run python_test.py
-  system("python python_test.py &");
+  //system("python python_test.py &");
   string fifoname = "/tmp/python_fifo";
   mkfifo(fifoname.c_str(), kflag);
   Fifo read_fifo;
   read_fifo.Initialize(fifoname, true);
   read_fifo.Open();
-  read_fifo.Wait();
+  int sig = read_fifo.Wait();
+  EXPECT_EQ(sig, 2);
+  cout << sig << endl;
   cout << "read complete." << endl;
 }
 
@@ -122,7 +125,7 @@ TEST(ChannelTest, ChannelTestWithPython) {
   }
   write_mem.Write(&store_data);
   fifo_write.Open();
-  fifo_write.Signal();
+  fifo_write.Signal(1);
   fifo_read.Open();
   fifo_read.Wait();
 

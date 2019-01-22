@@ -31,9 +31,9 @@ class Fifo {
 
   void Open();
 
-  void Signal();
+  void Signal(int sig);
 
-  void Wait();
+  int Wait();
 
  private:
   std::string filename_;

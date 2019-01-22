@@ -21,16 +21,17 @@ void Fifo::Open() {
   }
 }
 
-void Fifo::Wait() {
+int Fifo::Wait() {
   //CHECK_EQ(is_reader_, true);
   int sig = 0;
-  ssize_t size = read(fd_, reinterpret_cast<char*>(&sig), sizeof(int));
+  ssize_t size = read(fd_, reinterpret_cast<char*>(&sig), 4);
   //CHECK_NE(size, -1);
+  return (int)sig;
 }
 
-void Fifo::Signal() {
+void Fifo::Signal(int sig) {
   //CHECK_EQ(is_reader_, false);
-  int sig = 0;
+  int sig_ = sig;
   ssize_t size = write(fd_, reinterpret_cast<char*>(&sig), sizeof(int));
   //CHECK_NE(size, -1);
 }

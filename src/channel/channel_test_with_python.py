@@ -13,6 +13,7 @@ read_fifo = os.open(read_fifo_path, os.O_SYNC | os.O_CREAT | os.O_RDWR)
 write_fifo = os.open(write_fifo_path, os.O_SYNC | os.O_CREAT | os.O_RDWR)
 
 sig = os.read(read_fifo, 4)
+print struct.unpack('i', sig)[0]
 s = []
 with contextlib.closing(mmap.mmap(read_fd.fileno(), 804, access=mmap.ACCESS_READ)) as m:
     m.seek(0)
