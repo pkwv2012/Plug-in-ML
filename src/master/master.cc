@@ -31,12 +31,12 @@ void Master::Initialize(const int16 &listen_port) {
 void Master::MainLoop() {
   std::cout << "Main loop";
   while (true) {
-    std::string* msg_str;
+    std::string msg_str;
     LOG(INFO) << "Receiving";
-    receiver_->Receive(msg_str);
+    receiver_->Receive(&msg_str);
     LOG(INFO) << "Receive finish";
     Message msg;
-    msg.ParseFromString(*msg_str);
+    msg.ParseFromString(msg_str);
     switch (msg.message_type()) {
       case Message_MessageType_config:
       case Message_MessageType_request:
@@ -85,6 +85,7 @@ bool Master::DeliverConfig() {
     auto send_byte = sender_->Send(i, buf, *buf_size);
     LOG(INFO) << "Send to " << i << " config of " << send_byte;
   }
+  delete msg;
   return true;
 }
 
@@ -137,11 +138,11 @@ int32_t Master::Initialize(const std::string &master_ip_port) {
   std::cout << "Start Initialize";
   this->sender_.reset(new ZmqCommunicator());
   LOG(INFO) << "Create sender" << std::endl;
-  this->sender_->Initialize(16, true, FLAGS_listen_port, 2048);
+  this->sender_->Initialize(16, true, FLAGS_listen_port, 128);
   LOG(INFO) << "Sender finish" << std::endl;
   this->receiver_.reset(new ZmqCommunicator());
-  this->receiver_->Initialize(16, false, FLAGS_listen_port, 2048);
-  LOG(INFO) << "Master init finish";
+  this->receiver_->Initialize(16, false, FLAGS_listen_port, 128);
+  LOG(INFO) << "Master init finish." << "count = " << count << std::endl;
   return count;
 }
 
