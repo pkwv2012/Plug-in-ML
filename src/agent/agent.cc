@@ -195,12 +195,13 @@ bool Agent::AgentWork() {
   cout << "Agent: Start AgentWork" << endl;  
   int32 signal_type;
   while (true) {
-    // Wait for worker's signal,
+    // Wait for worker's signal
     cout << "Agent: Wait for worker's signal" << endl;
     signal_type = grad_fifo_.Wait();
     
     // case 0: Pull request from worker
     if (signal_type == 0) {
+      cout << "Agent: Receive pull request from worker" << endl;
       parameters_ = *grad_memory_.Read();
       cout << "Agent: Try to Pull" << endl;
       Pull();
@@ -214,9 +215,10 @@ bool Agent::AgentWork() {
       }
       cout << endl;
       cout << "Agent: Signal to the worker" << endl;
-      para_fifo_.Signal();
+      para_fifo_.Signal(2);
       cout << "Pull Done" << endl;
     } else if (signal_type == 1) {
+    // case 1: Push request from worker
       cout << "Agent: Read gradients from memory" << endl;
       gradients_ = *grad_memory_.Read();
       cout << "Agent: gradients_.size = " << gradients_.size << endl;
@@ -229,6 +231,8 @@ bool Agent::AgentWork() {
       cout << "Agent: Try to Push" << endl;
       Push();
     } else {
+    // case 2: Terminate request from worker
+      cout << "Agent: Terminate" << endl;
       Message msg_send;
       msg_send.set_message_type(Message_MessageType_terminate);
       msg_send.set_send_id(local_id_);
