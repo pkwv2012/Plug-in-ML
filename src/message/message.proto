@@ -10,6 +10,7 @@ message Message {
     request = 1;  // used by server/agent
     heartbeat = 2;  // used by master/server/agent
     register = 3; // used by server/agent to register at start
+    terminate = 4; // Telling master that the task is completed.
   }
 
   message RequestMessage {
