@@ -147,6 +147,7 @@ bool Agent::Initialize(std::string para_fifo_name,
   delete[] part_vec;
 
   // 4.Initialize the fifo and shared memory
+  
   cout << "4.Initialize the fifo and shared memory" << endl;
   para_fifo_name_ = para_fifo_name;
   grad_fifo_name_ = grad_fifo_name;
@@ -166,8 +167,8 @@ bool Agent::Initialize(std::string para_fifo_name,
   grad_fifo_.Initialize(grad_fifo_name_, false);
   para_memory_.Initialize(para_memory_name_.c_str());
   grad_memory_.Initialize(grad_memory_name_.c_str());
-
-  cout << "Agent's initialization is done" << endl;
+  
+  LOG(INFO) << "Agent's initialization is done" << endl;
   return true;
 }
 
@@ -188,19 +189,43 @@ bool Agent::Start() {
 }
 
 bool Agent::AgentWork() {
+
+  cout << "Agent: Start AgentWork" << endl;  
+  
   while (true) {
     // Wait for worker's signal,
+    cout << "Agent: Wait for worker's signal" << endl;
     grad_fifo_.Wait();
+    cout << "Agent: Read gradient from memory" << endl;
     gradients_ = *grad_memory_.Read();
+    cout << "Agent: gradients_.size = " << gradients_.size << endl;
+    cout << "(key, value)s are as follows:" << endl;
+    for (int32 i = 0; i < gradients_.size; i++) {
+      cout << "(" << gradients_.keys[i] << ", " << gradients_.values[i]
+           << ")" << ", ";
+    }
+    cout << endl;
+    cout << "Agent: Try to Push" << endl;
     Push();
     // Set the key_list_ for pulling
     // PS: At present, agent just request for all keys from servers
     for (int32 i = 0; i < key_range_; i++) {
       parameters_.keys[i] = i;
     }
+    cout << "Agent: Try to Pull" << endl;
     Pull();
+    cout << "Agent: Write parameters to memory" << endl;
     para_memory_.Write(&parameters_);
+    cout << "Agent: parameters_.size = " << parameters_.size << endl;
+    cout << "(key, value)s are as follows:" << endl;
+    for (int32 i = 0; i < gradients_.size; i++) {
+      cout << "(" << parameters_.keys[i] << ", " << parameters_.values[i]
+           << ")" << ", ";
+    }
+    cout << endl;
+    cout << "Agent: Signal to the worker" << endl;
     para_fifo_.Signal();
+    cout << "Agent: A loop is done" << endl;
   }
   return true;
 }
@@ -224,10 +249,12 @@ bool Agent::Push() {
   // Divide key list and value list and send them to different serverss
   start = 0;
   size = gradients_.size;
+  cout << "Agent: gradients_.size = " << gradients_.size << endl;
   while (start < size) {
     // *@&(#&(@&$(&@)!*$)@*!)$)!@$)!@$)@)
     end = partition_.NextEnding(std::vector<int>(parameters_.keys,
                               parameters_.keys + 100), start, server_id);
+    cout << "Agent: start, end = " << start << ", " << end << endl;                     
     request_msg.clear_keys();
     request_msg.clear_values();
     for (int32 i = start; i < end; i++) {
@@ -237,6 +264,7 @@ bool Agent::Push() {
     msg_send.set_allocated_request_msg(&request_msg);
     msg_send.set_recv_id(server_id);
     msg_send.SerializeToString(&request_str);
+    cout << "Agent: Send 'push' to server" << endl;
     if (sender_->Send(server_id, request_str) == -1) {
       LOG(ERROR) << "Cannot send push message to server:" << server_id;
     }
@@ -272,6 +300,7 @@ bool Agent::Pull() {
     // ^&(@#&@)#*)@!*)#*@!)#*)!@*)*)
     end = partition_.NextEnding(std::vector<int>(parameters_.keys,
                               parameters_.keys + 100), start, server_id);
+    cout << "Agent: start, end = " << start << ", " << end << endl;
     server_set.insert(server_id);
     request_msg.clear_keys();
     for (int32 i = start; i < end; i++) {
@@ -280,6 +309,7 @@ bool Agent::Pull() {
     msg_send_recv.set_allocated_request_msg(&request_msg);
     msg_send_recv.set_recv_id(server_id);
     msg_send_recv.SerializeToString(&msg_str);
+    cout << "Agent: Send 'pull' to server" << endl;
     if (sender_->Send(server_id, msg_str) == -1) {
       LOG(ERROR) << "Cannot send pull message to server:" << server_id;
     }
@@ -293,15 +323,18 @@ bool Agent::Pull() {
 
   int32 cur = 0;
   parameters_.size = 0;
-
+  
+  cout << "Agent: Start waiting for server's response" << endl;
   while (!server_set.empty()) {
     if (receiver_->Receive(&msg_str) == -1) {
+      cout << "Agent: Error in receiving message from servers" << endl;
       LOG(ERROR) << "Error in receiving message from servers";
     } else {
       msg_send_recv.ParseFromString(msg_str);
 
       // Ignore wrong messages
       // Check the message type
+      cout << "Agent: Check the message from server" << endl;
       if (msg_send_recv.message_type() != Message_MessageType_request) {
         LOG(ERROR) << "Agent receives a message with wrong message_type";
         continue;
@@ -332,15 +365,17 @@ bool Agent::Pull() {
         LOG(ERROR) << "Agent receives a message with wrong request_type";
         continue;
       }
+      cout << "Agent: Get response from server " << msg_send_recv.send_id() 
+           << endl;
       server_set.erase(msg_send_recv.send_id());
       size = request_msg.keys_size();
+      cout << "Agent: Receive " << size << "key_value pairs" << endl;
       // PS: Maybe I will allocate stable space for part_keys and part_values,
       // if I know the maximal number of key-value pairs
       // Extract parameter keys from the message
       int32* part_keys = new int32[size];
       request_msg.mutable_keys()->ExtractSubrange(0, size, part_keys);
       memcpy(parameters_.keys + cur, part_keys, size);
-
       delete[] part_keys;
       // Extract parameter values from the message
       float32* part_values = new float32[size];
@@ -351,6 +386,8 @@ bool Agent::Pull() {
       cur += size;
     }
   }
+  parameters_.size = cur;
+  cout << "Agent: parameters_.size = " << parameters_.size << endl;
 }
 
 }  // namespace rpscc

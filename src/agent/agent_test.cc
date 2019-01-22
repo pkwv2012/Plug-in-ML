@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cstring>
 #include <pthread.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -6,11 +7,16 @@
 #include "src/agent/agent.h"
 #include "src/communication/zmq_communicator.h"
 #include "src/message/message.pb.h"
+#include "src/channel/fifo.h"
+#include "src/channel/shared_memory.h"
 
 using namespace rpscc;
 using namespace std;
 
-// In this test, the <ip>:<port> list is as follow
+// In this test, the <id>:<ip>:<port> list is as follows:
+// Master 0 : 127.0.0.1       : 5000
+// Agent  1 : 192.168.184.129 : 5555
+// Server 2 : 127.0.0.1       : 5005
 
 void Init() {
   Agent agent;
@@ -23,9 +29,12 @@ void Init() {
   agent.Initialize(para_fifo_name, grad_fifo_name,
                    para_memory_name, grad_memory_name,
                    shared_memory_size, master_addr);
+  cout << "Agent: Start" << endl;
+  agent.Start();
 }
 
 void Mast() {
+  cout << "Master: Start" << endl;
   ZmqCommunicator sender;
   ZmqCommunicator receiver;
   int16 master_port = 5000;
@@ -74,11 +83,13 @@ void Mast() {
     msg_send.set_allocated_config_msg(&config_msg);
     msg_send.SerializeToString(&config_str);
     
-    cout << "config_str.size() = " << config_str.size() << endl;
-    cout << "Master send config string to agent" << endl;
+    cout << "Master: config_str.size() = " << config_str.size() << endl;
+    cout << "Master: Master send config string to agent" << endl;
     sender.Send(1, config_str);
-    
+  }
+  while (true) {
     sleep(10);
+    return;
   }
 }
 
@@ -87,7 +98,66 @@ void Serve() {
 }
 
 void Work() {
-
+  cout << "Worker: Press any key to start" << endl;
+  string str;
+  cin >> str;
+  
+  Fifo para_fifo, grad_fifo;
+  SharedMemory para_memory, grad_memory;
+  shmstruct parameters, gradients;
+  
+  string para_fifo_name = "cute_para_fifo";
+  string grad_fifo_name = "cute_grad_fifo";
+  string para_memory_name = "cute_para_mem";
+  string grad_memory_name = "cute_grad_mem";
+  int32 shared_memory_size = 1024;
+  
+  int fd = shm_open(para_memory_name.c_str(), O_RDWR | O_CREAT, FILE_MODE);
+  ftruncate(fd, sizeof(struct shmstruct));
+  fd = shm_open(grad_memory_name.c_str(), O_RDWR | O_CREAT, FILE_MODE);
+  ftruncate(fd, sizeof(struct shmstruct));
+  close(fd);
+  
+  para_fifo.Initialize(para_fifo_name, false);
+  grad_fifo.Initialize(grad_fifo_name, true);
+  para_memory.Initialize(para_memory_name.c_str());
+  grad_memory.Initialize(grad_memory_name.c_str());
+  para_fifo.Open();
+  grad_fifo.Open();
+  
+  gradients.size = 5;
+  for (int i = 0; i < 5; i++) {
+    gradients.keys[i] = i;
+    gradients.values[i] = i + 10;
+  }
+  
+  while (true) {
+    cout << "Worker: Prepare gradients for agent" << endl;
+    cin >> str;
+    cout << "Worker: Transfer " << gradients.size << " gradients to agent"
+         << endl;
+    cout << "(key, value)s are as follows" << endl;
+    for (int i = 0; i < gradients.size; i++) {
+      cout << "(" << gradients.keys[i] << ", " << gradients.values[i]
+           << ")" << ", ";
+    }
+    cout << endl;
+    grad_memory.Write(&gradients);
+    grad_fifo.Signal();
+    cout << "Worker: Wait for agent's parameters" << endl;
+    para_fifo.Wait();
+    cout << "Worker: Get parameters from agent" << endl;
+    parameters = *para_memory.Read();
+    cout << "Worker: Get " << parameters.size << " parameters from agent"
+         << endl;
+    cout << "(key, value)s are as follows" << endl;
+    for (int i = 0; i < parameters.size; i++) {
+      cout << "(" << parameters.keys[i] << ", " << parameters.values[i]
+           << ")" << ", ";
+    }
+    cout << endl;
+    cout << "Worker: A loop is done" << endl;
+  }
 }
 
 int main(int argc, char* argv[]) {
@@ -109,8 +179,9 @@ int main(int argc, char* argv[]) {
   int pppid = fork();
   if (pppid == 0) {
     Serve();
+    return 0;
   }
-  
+  Work();
   
   cout << "done" << endl;
   return 0;
