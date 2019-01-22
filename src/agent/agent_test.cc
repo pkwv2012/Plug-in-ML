@@ -20,10 +20,10 @@ using namespace std;
 
 void Init() {
   Agent agent;
-  string para_fifo_name = "cute_para_fifo";
-  string grad_fifo_name = "cute_grad_fifo";
-  string para_memory_name = "cute_para_mem";
-  string grad_memory_name = "cute_grad_mem";
+  string para_fifo_name = "/tmp/cute_para_fifo";
+  string grad_fifo_name = "/tmp/cute_grad_fifo";
+  string para_memory_name = "/cute_para_mem";
+  string grad_memory_name = "/cute_grad_mem";
   int32 shared_memory_size = 1024;
   string master_addr = "127.0.0.1:5000";
   agent.Initialize(para_fifo_name, grad_fifo_name,
@@ -43,7 +43,7 @@ void Mast() {
   Message msg_recv;
   
   Message_RegisterMessage reg_msg;
-  Message_ConfigMessage config_msg;
+  Message_ConfigMessage* config_msg = new Message_ConfigMessage();
   
   string reg_str;    // receive from agent or server
   string config_str; // send to agent or server
@@ -61,60 +61,88 @@ void Mast() {
     string agent_addr = reg_msg.ip() + ":" + to_string(reg_msg.port());
     sender.AddIdAddr(1, agent_addr);
     
-    config_msg.set_worker_num(1);
-    config_msg.set_server_num(1);
-    config_msg.set_key_range(100);
+    config_msg->set_worker_num(1);
+    config_msg->set_server_num(1);
+    config_msg->set_key_range(100);
     
-    config_msg.add_node_ip_port("127.0.0.1:5000");
-    config_msg.add_node_ip_port(agent_addr);
-    config_msg.add_node_ip_port("127.0.0.1:5005");
+    config_msg->add_node_ip_port("127.0.0.1:5000");
+    config_msg->add_node_ip_port(agent_addr);
+    config_msg->add_node_ip_port("127.0.0.1:5005");
 
-    config_msg.add_partition(0);
-    config_msg.add_partition(100);
-    config_msg.add_server_id(2);
-    config_msg.add_worker_id(1);
-    config_msg.add_master_id(0);
-    config_msg.set_bound(1);
+    config_msg->add_partition(0);
+    config_msg->add_partition(100);
+    config_msg->add_server_id(2);
+    config_msg->add_worker_id(1);
+    config_msg->add_master_id(0);
+    config_msg->set_bound(1);
     
     msg_send.set_message_type(Message_MessageType_config);
     msg_send.set_recv_id(1);
     msg_send.set_send_id(0);
-    msg_send.set_allocated_config_msg(&config_msg);
+    msg_send.set_allocated_config_msg(config_msg);
     msg_send.SerializeToString(&config_str);
-    
-    cout << "Master: config_str.size() = " << config_str.size() << endl;
+
     cout << "Master: Master send config string to agent" << endl;
     sender.Send(1, config_str);
+    break;
   }
   while (true) {
     sleep(10);
     return;
   }
 }
-void Serve() {}
-/*
+
 void Serve() {
   cout << "Server: Start" << endl;
   ZmqCommunicator sender;
   ZmqCommunicator receiver;
   int16 server_port = 5005;
   
-  Message msg_send;
-  Message msg_recv;
+  Message msg;
   
-  Message_RequestMessage reqmsg;
+  Message_RequestMessage* req_msg;
   
   string msg_str;
   
   sender.Initialize(64, true, 1024);
   receiver.Initialize(64, false, server_port);
-  sender.AddIdAddr()
+  sender.AddIdAddr(1, "127.0.0.1:5555");
   while (true) {
     cout << "Server: Wait for agent's push request" << endl;
+    int rc = receiver.Receive(&msg_str);
+    cout << "Server: Receive " << rc << " bytes from agent" << endl;
+    msg.ParseFromString(msg_str);
+    cout << "Server: Receive " << msg.DebugString() << endl;
     
+    cout << "Server: Wait for agents' pull request" << endl;
+    rc = receiver.Receive(&msg_str);
+    cout << "Server: Receive " << rc << " bytes from agent" << endl;
+    msg.ParseFromString(msg_str);
+    cout << "Server: Receive " << msg.DebugString() << endl;
+    
+    cout << "Server: Try to return parameters to agent" << endl;
+    req_msg = new Message_RequestMessage();
+    req_msg->set_request_type(Message_RequestMessage_RequestType_key_value);
+    req_msg->add_keys(0);
+    req_msg->add_keys(1);
+    req_msg->add_keys(2);
+    req_msg->add_values(20);
+    req_msg->add_values(30);
+    req_msg->add_values(40);
+    msg.clear_request_msg();
+    
+    msg.set_allocated_request_msg(req_msg);
+    msg.set_send_id(2);
+    msg.set_recv_id(1);
+    msg.set_message_type(Message_MessageType_request);
+    
+    msg.SerializeToString(&msg_str);
+    cout << "Server: Return parameters to agent" << endl;
+    sender.Send(1, msg_str);
+    sleep(1);
   }
 }
-*/
+
 void Work() {
   cout << "Worker: Press any key to start" << endl;
   string str;
@@ -124,10 +152,10 @@ void Work() {
   SharedMemory para_memory, grad_memory;
   shmstruct parameters, gradients;
   
-  string para_fifo_name = "cute_para_fifo";
-  string grad_fifo_name = "cute_grad_fifo";
-  string para_memory_name = "cute_para_mem";
-  string grad_memory_name = "cute_grad_mem";
+  string para_fifo_name = "/tmp/cute_para_fifo";
+  string grad_fifo_name = "/tmp/cute_grad_fifo";
+  string para_memory_name = "/cute_para_mem";
+  string grad_memory_name = "/cute_grad_mem";
   int32 shared_memory_size = 1024;
   
   int fd = shm_open(para_memory_name.c_str(), O_RDWR | O_CREAT, FILE_MODE);
@@ -136,13 +164,12 @@ void Work() {
   ftruncate(fd, sizeof(struct shmstruct));
   close(fd);
   
-  para_fifo.Initialize(para_fifo_name, false);
-  grad_fifo.Initialize(grad_fifo_name, true);
+  para_fifo.Initialize(para_fifo_name, true);
+  grad_fifo.Initialize(grad_fifo_name, false);
   para_memory.Initialize(para_memory_name.c_str());
   grad_memory.Initialize(grad_memory_name.c_str());
   para_fifo.Open();
   grad_fifo.Open();
-  
   gradients.size = 5;
   for (int i = 0; i < 5; i++) {
     gradients.keys[i] = i;
@@ -196,6 +223,7 @@ int main(int argc, char* argv[]) {
   // Test AgentWork
   int pppid = fork();
   if (pppid == 0) {
+    sleep(2);
     Serve();
     return 0;
   }

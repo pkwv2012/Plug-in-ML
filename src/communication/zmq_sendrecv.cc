@@ -52,7 +52,7 @@ int32 ZmqSendRecv::Send(std::string dst_addr, const char* const message,
     mapper_.insert(std::make_pair(dst_addr, sender_));
     sendrecv_ = sender_;
   } else {
-    //printf("Use existed socket.\n");
+    printf("Use existed socket.\n");
     sendrecv_ = iter->second;
   }
   // Start sending message
