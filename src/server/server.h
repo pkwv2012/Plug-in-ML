@@ -34,7 +34,7 @@ class Server {
   bool Initialize();
   void Start();
 
- private:
+ protected:
   std::unique_ptr<Communicator> sender_;
   std::unique_ptr<Communicator> receiver_;
 
