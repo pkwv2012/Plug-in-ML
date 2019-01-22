@@ -14,6 +14,8 @@
 
 namespace rpscc {
 
+DECLARE_int32(listen_port);
+
 class Master {
  public:
   Master();

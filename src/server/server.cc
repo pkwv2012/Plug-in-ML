@@ -38,18 +38,20 @@ bool Server::Initialize() {
     return false;
   }
   local_address_ = ip;
-  Message msg_send;
+  Message* msg_send = new Message;
   Message msg_recv;
-  Message_RegisterMessage reg_msg;
+  Message_RegisterMessage* reg_msg = new Message_RegisterMessage;
   Message_ConfigMessage config_msg;
   std::string reg_str;
   std::string config_str;
-  reg_msg.set_ip(local_address_);
-  msg_send.set_message_type(Message_MessageType_register_);
-  msg_send.set_recv_id(0);
-  msg_send.set_send_id(-1);
-  msg_send.set_allocated_register_msg(&reg_msg);
-  msg_send.SerializeToString(&reg_str);
+  reg_msg->set_ip(local_address_);
+  reg_msg->set_is_server(true);
+  msg_send->set_message_type(Message_MessageType_register_);
+  msg_send->set_recv_id(0);
+  msg_send->set_send_id(-1);
+  msg_send->set_allocated_register_msg(reg_msg);
+  msg_send->SerializeToString(&reg_str);
+  delete msg_send;
 
   // TODO(Song Xu): to improve robustness multiple attemptions can be made
   // before we return false.
@@ -132,19 +134,20 @@ bool Server::RespondToAll() {
     std::string reply_str;
     PullInfo request = pull_request_.front();
     pull_request_.pop();
-    Message msg_send;
-    Message_RequestMessage reply_msg;
-    reply_msg.set_request_type(Message_RequestMessage_RequestType_key_value);
+    Message* msg_send = new Message;
+    Message_RequestMessage* reply_msg = new Message_RequestMessage;
+    reply_msg->set_request_type(Message_RequestMessage_RequestType_key_value);
     uint32 len = request.Length();
     for (uint32 i = 0; i < len; ++i) {
-      reply_msg.add_keys(request.Key(i));
-      reply_msg.add_values(parameters_[request.Key(i) - start_key_]);
+      reply_msg->add_keys(request.Key(i));
+      reply_msg->add_values(parameters_[request.Key(i) - start_key_]);
     }
-    msg_send.set_send_id(local_id_);
-    msg_send.set_recv_id(request.get_id());
-    msg_send.set_message_type(Message_MessageType_request);
-    msg_send.set_allocated_request_msg(&reply_msg);
-    msg_send.SerializeToString(&reply_str);
+    msg_send->set_send_id(local_id_);
+    msg_send->set_recv_id(request.get_id());
+    msg_send->set_message_type(Message_MessageType_request);
+    msg_send->set_allocated_request_msg(reply_msg);
+    msg_send->SerializeToString(&reply_str);
+    delete msg_send;
 
     // TODO(Song Xu): we'd better try more times before give up replying, and
     // if we decide to give up for one agent, we shoule send a message to warn
@@ -220,14 +223,15 @@ void Server::ServePush(uint32 sender_id,
 
   // Acknowledgement from server
   std::string send_str;
-  Message_RequestMessage ack_msg;
-  Message msg_send;
-  ack_msg.set_request_type(Message_RequestMessage_RequestType_ack);
-  msg_send.set_message_type(Message_MessageType_request);
-  msg_send.set_allocated_request_msg(&ack_msg);
-  msg_send.set_send_id(local_id_);
-  msg_send.set_recv_id(sender_id);
-  msg_send.SerializeToString(&send_str);
+  Message_RequestMessage* ack_msg = new Message_RequestMessage;
+  Message* msg_send = new Message;
+  ack_msg->set_request_type(Message_RequestMessage_RequestType_ack);
+  msg_send->set_message_type(Message_MessageType_request);
+  msg_send->set_allocated_request_msg(ack_msg);
+  msg_send->set_send_id(local_id_);
+  msg_send->set_recv_id(sender_id);
+  msg_send->SerializeToString(&send_str);
+  delete msg_send;
   if (sender_->Send(sender_id, send_str) == -1) {
     LOG(ERROR) << "Failed to respond to worker " << sender_id
                << "'s push request.";
@@ -260,38 +264,41 @@ void Server::ServePull(uint32 sender_id,
   if (version_buffer_[id_to_index_[sender_id]].size()
     >= consistency_bound_) {
     PullInfo blocked_request;
+    blocked_request.set_id(sender_id);
     for (uint32 i = 0; i < request.keys_size(); ++i)
       blocked_request.AddKey(request.keys(i));
     pull_request_.push(blocked_request);
 
     std::string send_str;
-    Message_RequestMessage block_msg;
-    Message msg_send;
-    block_msg.set_request_type(Message_RequestMessage_RequestType_block);
-    msg_send.set_message_type(Message_MessageType_request);
-    msg_send.set_allocated_request_msg(&block_msg);
-    msg_send.set_send_id(local_id_);
-    msg_send.set_recv_id(sender_id);
-    msg_send.SerializeToString(&send_str);
+    Message_RequestMessage* block_msg = new Message_RequestMessage;
+    Message* msg_send = new Message;
+    block_msg->set_request_type(Message_RequestMessage_RequestType_block);
+    msg_send->set_message_type(Message_MessageType_request);
+    msg_send->set_allocated_request_msg(block_msg);
+    msg_send->set_send_id(local_id_);
+    msg_send->set_recv_id(sender_id);
+    msg_send->SerializeToString(&send_str);
+    delete msg_send;
     if (sender_->Send(sender_id, send_str) == -1) {
       LOG(ERROR) << "Failed to send block message for worker " << sender_id
         << "'s pull request.";
     }
   } else {
     std::string reply_str;
-    Message msg_send;
-    Message_RequestMessage reply_msg;
-    reply_msg.set_request_type(
+    Message* msg_send = new Message;
+    Message_RequestMessage* reply_msg = new Message_RequestMessage;
+    reply_msg->set_request_type(
       Message_RequestMessage_RequestType_key_value);
     for (uint32 i = 0; i < request.keys_size(); ++i) {
-      reply_msg.add_keys(request.keys(i));
-      reply_msg.add_values(parameters_[request.keys(i) - start_key_]);
+      reply_msg->add_keys(request.keys(i));
+      reply_msg->add_values(parameters_[request.keys(i) - start_key_]);
     }
-    msg_send.set_message_type(Message_MessageType_request);
-    msg_send.set_allocated_request_msg(&reply_msg);
-    msg_send.set_send_id(local_id_);
-    msg_send.set_recv_id(sender_id);
-    msg_send.SerializeToString(&reply_str);
+    msg_send->set_message_type(Message_MessageType_request);
+    msg_send->set_allocated_request_msg(reply_msg);
+    msg_send->set_send_id(local_id_);
+    msg_send->set_recv_id(sender_id);
+    msg_send->SerializeToString(&reply_str);
+    delete msg_send;
     if (sender_->Send(sender_id, reply_str) == -1) {
       LOG(ERROR) << "Failed to respond to worker " << sender_id
         << "'s pull request.";
