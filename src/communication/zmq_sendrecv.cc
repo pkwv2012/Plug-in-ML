@@ -52,13 +52,13 @@ int32 ZmqSendRecv::Send(std::string dst_addr, const char* const message,
     mapper_.insert(std::make_pair(dst_addr, sender_));
     sendrecv_ = sender_;
   } else {
-    printf("Use existed socket.\n");
+    //printf("Use existed socket.\n");
     sendrecv_ = iter->second;
   }
   // Start sending message
-  printf("message = %s, len = %d\n", message, len);
+  //printf("message = %s, len = %d\n", message, len);
   int rc = zmq_send(sendrecv_, message, len, 0);
-  printf("Send_rc = %d\n", rc);
+  //printf("Send_rc = %d\n", rc);
   // I will add a error handler in the future.
   return len;
 }
@@ -67,7 +67,7 @@ int32 ZmqSendRecv::Receive(char* message, const int32 max_size) {
   // Start receiving message
   int32 msg_size = zmq_recv(sendrecv_, message, max_size, 0);
   message[msg_size] = '\0';
-  printf("Receive message : %s, size = %d\n", message, msg_size);
+  //printf("Receive message : %s, size = %d\n", message, msg_size);
   return msg_size;
 }
 

@@ -15,7 +15,7 @@ using namespace std;
 
 // In this test, the <id>:<ip>:<port> list is as follows:
 // Master 0 : 127.0.0.1       : 5000
-// Agent  1 : 192.168.184.129 : 5555
+// Agent  1 : 127.0.0.1       : 5555
 // Server 2 : 127.0.0.1       : 5005
 
 void Init() {
@@ -53,7 +53,6 @@ void Mast() {
   
   while (1) {
     receiver.Receive(&reg_str);
-    printf("Get message %s\n", reg_str.c_str());
     msg_recv.ParseFromString(reg_str);
     reg_msg = msg_recv.register_msg();
     cout << "Agent's ip = " << reg_msg.ip() << " port = " << reg_msg.port()
@@ -92,11 +91,30 @@ void Mast() {
     return;
   }
 }
-
+void Serve() {}
+/*
 void Serve() {
+  cout << "Server: Start" << endl;
+  ZmqCommunicator sender;
+  ZmqCommunicator receiver;
+  int16 server_port = 5005;
   
+  Message msg_send;
+  Message msg_recv;
+  
+  Message_RequestMessage reqmsg;
+  
+  string msg_str;
+  
+  sender.Initialize(64, true, 1024);
+  receiver.Initialize(64, false, server_port);
+  sender.AddIdAddr()
+  while (true) {
+    cout << "Server: Wait for agent's push request" << endl;
+    
+  }
 }
-
+*/
 void Work() {
   cout << "Worker: Press any key to start" << endl;
   string str;
