@@ -11,11 +11,12 @@
 #include "master.h"
 
 
+namespace rpscc {
+
 DEFINE_int32(heartbeat_timeout, 30, "The maximum time to decide "
   "whether the node is offline");
 DEFINE_int32(listen_port, 16666, "The listening port of cluster.");
 
-namespace rpscc {
 
 void Master::WaitForClusterReady() {
 }
