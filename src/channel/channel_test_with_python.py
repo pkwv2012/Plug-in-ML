@@ -36,4 +36,4 @@ with contextlib.closing(mmap.mmap(write_fd, 804, mmap.MAP_SHARED, mmap.PROT_WRIT
     for i in range(101, 201):
         w.write(struct.pack('i', s[i]+1))
 
-os.write(write_fifo, '1')
+os.write(write_fifo, struct.pack('i', 5))

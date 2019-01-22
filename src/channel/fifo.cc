@@ -3,6 +3,7 @@
 
 #include "src/channel/fifo.h"
 #include <fcntl.h>
+#include <stdlib.h>
 
 
 namespace rpscc {
@@ -24,9 +25,9 @@ void Fifo::Open() {
 int Fifo::Wait() {
   //CHECK_EQ(is_reader_, true);
   int sig = 0;
-  ssize_t size = read(fd_, reinterpret_cast<char*>(&sig), 4);
+  ssize_t size = read(fd_, reinterpret_cast<char*>(&sig), sizeof(int));
   //CHECK_NE(size, -1);
-  return (int)sig;
+  return sig;
 }
 
 void Fifo::Signal(int sig) {

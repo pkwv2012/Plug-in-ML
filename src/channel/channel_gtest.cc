@@ -35,6 +35,8 @@ TEST(ChannelTest, Fifo) {
     int sig = fifo1.Wait();
     EXPECT_EQ(sig, 2);
     cout << "Read process complete." << endl;
+    sig = fifo1.Wait();
+    EXPECT_EQ(sig, 3);
   } else {
     sleep(1);
     Fifo fifo2;
@@ -42,6 +44,7 @@ TEST(ChannelTest, Fifo) {
     fifo2.Open();
     fifo2.Signal(2);
     cout << "Write process complete." << endl;
+    fifo2.Signal(3);
   }
 }
 
@@ -84,20 +87,6 @@ TEST(ChannelTest, SharedMemory) {
   }
 }
 
-TEST(ChannelTest, FifoWithPython) {
-  // run this test first && then run python_test.py
-  // maybe following add the part of auto run python_test.py
-  //system("python python_test.py &");
-  string fifoname = "/tmp/python_fifo";
-  mkfifo(fifoname.c_str(), kflag);
-  Fifo read_fifo;
-  read_fifo.Initialize(fifoname, true);
-  read_fifo.Open();
-  int sig = read_fifo.Wait();
-  EXPECT_EQ(sig, 2);
-  cout << sig << endl;
-  cout << "read complete." << endl;
-}
 
 // write to shared memory and then the python process will
 // read the data add increase 1 to every keys and values
@@ -127,8 +116,8 @@ TEST(ChannelTest, ChannelTestWithPython) {
   fifo_write.Open();
   fifo_write.Signal(1);
   fifo_read.Open();
-  fifo_read.Wait();
-
+  int sig = fifo_read.Wait();
+  EXPECT_EQ(sig, 5);
   shmstruct* data_read = read_mem.Read();
   EXPECT_EQ(data_read->size, 100);
   for(int i=0; i<100; i++) {

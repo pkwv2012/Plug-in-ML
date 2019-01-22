@@ -13,8 +13,8 @@ int main() {
   const int kvmax = 4096;
   pid_t pid;
   const int kflag = 0777;
-  std::string filename1 = "/tmp/test_fifo_sample";
-  std::string filename2 = "/tmp/test_fifo_sample";
+  std::string filename1 = "/tmp/test_fifo_sample1";
+  std::string filename2 = "/tmp/test_fifo_sample2";
   std::string ipc_name1 = "/test_sharedMemory_sample1";
   std::string ipc_name2 = "/test_sharedMemory_sample2";
   Fifo fifo_read, fifo_write;
@@ -28,7 +28,8 @@ int main() {
   fifo_read.Open(); fifo_write.Open();
   int t = 5;
   while(t--) {
-    fifo_read.Wait();
+    int sig = fifo_read.Wait();
+    std::cout << "sig " << sig << std::endl;
     shmstruct* data_read = read_mem.Read();
     std::cout << data_read->size << std::endl;
     for(int i=0; i<data_read->size; i++) {

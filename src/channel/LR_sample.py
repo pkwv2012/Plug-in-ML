@@ -33,8 +33,8 @@ if __name__ == '__main__':
 
     read_fd = os.open('/dev/shm/test_sharedMemory_sample1', os.O_RDWR | os.O_SYNC | os.O_CREAT)
     write_fd = os.open('/dev/shm/test_sharedMemory_sample2', os.O_RDWR | os.O_SYNC | os.O_CREAT)
-    read_fifo_path = '/tmp/test_fifo_sample'
-    write_fifo_path = '/tmp/test_fifo_sample'
+    read_fifo_path = '/tmp/test_fifo_sample1'
+    write_fifo_path = '/tmp/test_fifo_sample2'
 
     read_fifo = os.open(read_fifo_path, os.O_SYNC | os.O_CREAT | os.O_RDWR)
     write_fifo = os.open(write_fifo_path, os.O_SYNC | os.O_CREAT | os.O_RDWR)
@@ -53,7 +53,7 @@ if __name__ == '__main__':
     intercept = clf.intercept_
     keys = [i for i in range(5)]
     transfer2Agent(coef, keys, w)
-    os.write(write_fifo, '1')   # notify the Agent
+    os.write(write_fifo, struct.pack('i', 1))   # notify the Agent
     os.read(read_fifo, 4)       # wait to pull from Agent
     coef, keys = readFromAgent(m)
     # print coef
@@ -62,7 +62,7 @@ if __name__ == '__main__':
         coef = clf.coef_
         intercept = clf.intercept_
         transfer2Agent(coef, keys, w)
-        os.write(write_fifo, '1')
+        os.write(write_fifo, struct.pack('i', 1))
         os.read(read_fifo, 4)
         coef, keys = readFromAgent(m)
     #print X[0:100, :]
