@@ -22,20 +22,18 @@ DEFINE_string(net_interface, "",
 
 // This is a sorter for key list and value list stroed in the agent. During the
 // sorting, keys and values will keep thier relative positions.
-void Agent::SortKeyValue(std::vector<int32> keys,
-                         std::vector<float32> values) {
-  std::map<int32, int32> key_sub;
-  std::vector<float32> tmp_values(values.begin(), values.end());
+void Agent::SortKeyValue(int32* keys, float32* values, int32 size) {
+  std::map<int32, int32> key_map;
+  std::vector<float32> tmp_values(values, values + size);
 
-  int32 size = keys.size();
-  for (int32 i = 0; i < size; i++) key_sub.insert(std::make_pair(keys[i], i));
+  for (int32 i = 0; i < size; i++) key_map.insert(std::make_pair(keys[i], i));
   size = 0;
-  for (auto i : key_sub) {
-    keys[size] = i.first;
-    values[size++] = tmp_values[i.second];
+  for (auto item : key_map) {
+    keys[size] = item.first;
+    values[size++] = tmp_values[item.second];
   }
   tmp_values.clear();
-  key_sub.clear();
+  key_map.clear();
 }
 
 // To Initialize the agent.
@@ -261,8 +259,25 @@ bool Agent::Push() {
   std::string request_str;
 
   // Sort the key_value_list_ by the key, and then send them by blocks.
-  // SortKeyValue(gradients_.keys, gradients_.values);
-
+  cout << "Agent: Before SortKeyValue : " << endl;
+  cout << "Agent: gradients_.size = " << gradients_.size << endl;
+  cout << "(key, value)s are as follows:" << endl;
+  for (int32 i = 0; i < gradients_.size; i++) {
+    cout << "(" << gradients_.keys[i] << ", " << gradients_.values[i]
+         << ")" << ", ";
+  }
+  cout << endl;
+  
+  SortKeyValue(gradients_.keys, gradients_.values, gradients_.size);
+  cout << "Agent: After SortKeyValue : " << endl;
+  cout << "Agent: gradients_.size = " << gradients_.size << endl;
+  cout << "(key, value)s are as follows:" << endl;
+  for (int32 i = 0; i < gradients_.size; i++) {
+    cout << "(" << gradients_.keys[i] << ", " << gradients_.values[i]
+         << ")" << ", ";
+  }
+  cout << endl;
+  
   // Set the message type
   msg_send.set_message_type(Message_MessageType_request);
 
@@ -319,7 +334,7 @@ bool Agent::Pull() {
   std::set<int32> server_set;
 
   // Sort the key_list_
-  // sort(parameters_.keys.begin(), parameters_.keys.end());
+  sort(parameters_.keys, parameters_.keys + parameters_.size);
 
   // Set the message type
   msg_send_recv.set_message_type(Message_MessageType_request);

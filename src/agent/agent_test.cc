@@ -231,8 +231,8 @@ void Work() {
   grad_fifo.Open();
   gradients.size = 5;
   for (int i = 0; i < 5; i++) {
-    gradients.keys[i] = i;
-    gradients.values[i] = i + 10;
+    gradients.keys[i] = 4 - i;
+    gradients.values[i] = 4 - i + 10;
   }
   
   while (true) {

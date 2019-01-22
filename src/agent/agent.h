@@ -92,8 +92,7 @@ class Agent {
   bool Pull();
   
   // To sort the key list and value list
-  void SortKeyValue(std::vector<int32> keys, 
-                           std::vector<float32> values);
+  void SortKeyValue(int32* keys, float32* values, int32 size);
 };
 
 }  // namespace rpscc
