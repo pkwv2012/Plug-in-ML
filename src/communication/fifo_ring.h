@@ -8,6 +8,7 @@
 #include <semaphore.h>
 #include <unistd.h>
 #include <cstring>
+#include <mutex>
 
 #include "src/util/common.h"
 
@@ -40,6 +41,10 @@ class FifoRing {
   // produce or consume data in the ring.
   int32 produce_point_;
   int32 consume_point_;
+  // There should be two mutex to protect produce_point & consume_point,
+  // when multi-thread.
+  std::mutex produce_mutex;
+  std::mutex consume_mutex;
   // empty_sem_ is used for consumer, which indicates that whether there is
   // data in the ring.
   sem_t empty_sem_;

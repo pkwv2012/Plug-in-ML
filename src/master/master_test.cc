@@ -92,10 +92,6 @@ void ServerSimulator(std::string master_addr, int32_t server_port) {
 
 // Create one master thread, one agent thread, one server thread.
 TEST(Master, RegisterTest) {
-  int32_t argc = 1;
-  char** argv = new char*[100];
-  argv[0] = "asdf";
-  gflags::ParseCommandLineFlags(&argc, &argv , false);
   FLAGS_listen_port = 16666;
   FLAGS_worker_num = 1;
   FLAGS_server_num = 1;
