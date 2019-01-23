@@ -11,6 +11,7 @@
 #include "src/communication/communicator.h"
 #include "src/message/message.pb.h"
 #include "src/master/task_config.h"
+#include "src/util/logging.h"
 
 namespace rpscc {
 
@@ -54,6 +55,7 @@ class Master {
   std::unique_ptr<Communicator> sender_;
   std::unique_ptr<Communicator> receiver_;
   std::unordered_map<int, time_t> alive_node_;
+  std::unordered_set<int32_t> terminated_node_;
 };
 
 }  // namespace rpscc

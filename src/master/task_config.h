@@ -15,6 +15,9 @@
 
 namespace rpscc {
 
+DECLARE_int32(worker_num);
+DECLARE_int32(server_num);
+
 class TaskConfig {
  public:
   TaskConfig();
@@ -61,6 +64,11 @@ class TaskConfig {
   std::unordered_map<int32_t, std::string>& get_id_to_addr() {
     return id_to_addr_;
   }
+
+  int32_t worker_num() { return worker_num_; }
+  int32_t server_num() { return server_num_; }
+  std::vector<int32_t>& agent_id() { return agent_id_; }
+  std::vector<int32_t>& server_id() { return server_id_; }
 
  private:
   int32 worker_num_;

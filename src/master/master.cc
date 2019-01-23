@@ -30,7 +30,8 @@ void Master::Initialize(const int16 &listen_port) {
 
 void Master::MainLoop() {
   std::cout << "Main loop";
-  while (true) {
+  bool terminated = false;
+  while (! terminated) {
     std::string msg_str;
     LOG(INFO) << "Receiving";
     receiver_->Receive(&msg_str);
@@ -60,6 +61,18 @@ void Master::MainLoop() {
           }
           DeliverConfig();
         }
+        LOG(INFO) << "worker_num=" << config_.worker_num()
+                  << "server_num=" << config_.server_num()
+                  << "worker_cur_num=" << config_.agent_id().size()
+                  << "server_cur_num=" << config_.server_id().size()
+                  << std::endl;
+        break;
+      }
+      case Message_MessageType_terminate: {
+        terminated_node_.insert(msg.send_id());
+        if (terminated_node_.size() == config_.worker_num()) {
+          terminated = true;
+        }
         break;
       }
     }
@@ -67,7 +80,8 @@ void Master::MainLoop() {
 }
 
 Master::Master() {
-
+  LOG(INFO) << "Master initialization" << std::endl;
+  config_.Initialize(""/*config file name*/);
 }
 
 bool Master::DeliverConfig() {
@@ -75,14 +89,11 @@ bool Master::DeliverConfig() {
   msg->set_send_id(0); // Id of master
   msg->set_message_type(Message_MessageType_config);
   msg->set_allocated_config_msg(config_.ToMessage());
+  LOG(INFO) << "config right" << std::endl;
   for (int32_t i = 0; i < config_.get_node_ip().size(); ++ i) {
     msg->set_recv_id(i);
-    int32_t* buf_size = nullptr;
-    char* buf = nullptr;
-    *buf_size = msg->ByteSize();
-    buf = new char[*buf_size + 1];
-    msg->SerializeToArray(buf, *buf_size);
-    auto send_byte = sender_->Send(i, buf, *buf_size);
+    LOG(INFO) << i << std::endl;
+    auto send_byte = sender_->Send(i, msg->SerializeAsString());
     LOG(INFO) << "Send to " << i << " config of " << send_byte;
   }
   delete msg;
@@ -94,6 +105,7 @@ void Master::ProcessRegisterMsg(Message *msg) {
   bool is_server = register_msg.is_server();
   std::string ip = register_msg.ip();
   int32_t port = register_msg.port();
+  LOG(INFO) << "Master " << is_server << "  port" << port << std::endl;
   if (is_server) {
     config_.AppendServer(ip, port);
   } else {

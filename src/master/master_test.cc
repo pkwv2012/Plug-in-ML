@@ -23,6 +23,7 @@ void AgentSimulator(std::string master_addr, int32_t agent_port) {
   std::string agent_ip = "127.0.0.1";
   register_msg->set_ip(agent_ip);
   register_msg->set_is_server(false);
+  LOG(INFO) << "Agent port " << agent_port << std::endl;
   register_msg->set_port(agent_port);
   msg.set_allocated_register_msg(register_msg);
 
@@ -34,12 +35,17 @@ void AgentSimulator(std::string master_addr, int32_t agent_port) {
   LOG(INFO) << "Agent send register msg done" << std::endl;
   std::string msg_got;
   receiver->Receive(&msg_got);
+  LOG(INFO) << "Agent receive msg done." << std::endl;
   Message msg_recv;
   msg_recv.ParseFromString(msg_got);
   EXPECT_EQ(msg_recv.send_id(), 0);
   int32_t agent_id = msg_recv.recv_id();
   EXPECT_STREQ(msg_recv.config_msg().node_ip_port(agent_id).c_str(),
                (agent_ip + ":" + std::to_string(agent_port)).c_str());
+
+  msg.clear_register_msg();
+  msg.set_message_type(Message_MessageType_terminate);
+  sender->Send(0, msg.SerializeAsString());
 
   delete sender;
   delete receiver;
@@ -68,6 +74,7 @@ void ServerSimulator(std::string master_addr, int32_t server_port) {
   LOG(INFO) << "Server send register msg done" << std::endl;
   std::string msg_got;
   receiver->Receive(&msg_got);
+  LOG(INFO) << "Server receive msg done." << std::endl;
   Message msg_recv;
   msg_recv.ParseFromString(msg_got);
   EXPECT_EQ(msg_recv.send_id(), 0);
@@ -75,13 +82,23 @@ void ServerSimulator(std::string master_addr, int32_t server_port) {
   EXPECT_STREQ(msg_recv.config_msg().node_ip_port(agent_id).c_str(),
                (agent_ip + ":" + std::to_string(server_port)).c_str());
 
+  msg.clear_register_msg();
+  msg.set_message_type(Message_MessageType_terminate);
+  sender->Send(0, msg.SerializeAsString());
+
   delete sender;
   delete receiver;
 }
 
 // Create one master thread, one agent thread, one server thread.
 TEST(Master, RegisterTest) {
+  int32_t argc = 1;
+  char** argv = new char*[100];
+  argv[0] = "asdf";
+  gflags::ParseCommandLineFlags(&argc, &argv , false);
   FLAGS_listen_port = 16666;
+  FLAGS_worker_num = 1;
+  FLAGS_server_num = 1;
   rpscc::Master* master = rpscc::Master::Get();
   //master->Initialize(FLAGS_master_listen_port);
   std::string master_addr = "127.0.0.1:16666";

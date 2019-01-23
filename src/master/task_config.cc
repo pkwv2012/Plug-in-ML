@@ -8,18 +8,20 @@
 
 #include "gflags/gflags.h"
 #include "src/master/task_config.h"
-
-DEFINE_int32(worker_num, 0, "The number of worker.");
-DEFINE_int32(server_num, 0, "The number of server.");
-DEFINE_int32(key_range, 0, "The total number of features.");
-DEFINE_int32(bound, 0, "The definition of consistency.");
+#include "src/util/logging.h"
 
 namespace rpscc {
+
+DEFINE_int32(worker_num, 1, "The number of worker.");
+DEFINE_int32(server_num, 1, "The number of server.");
+DEFINE_int32(key_range, 0, "The total number of features.");
+DEFINE_int32(bound, 0, "The definition of consistency.");
 
 std::default_random_engine TaskConfig::generator_;
 std::unique_ptr<std::uniform_int_distribution<int>> TaskConfig::distribution_;
 
 void rpscc::TaskConfig::Initialize(const std::string &config_file) {
+  LOG(INFO) << FLAGS_server_num << std::endl;
   worker_num_ = FLAGS_worker_num;
   server_num_ = FLAGS_server_num;
   key_range_ = FLAGS_key_range;
@@ -39,9 +41,11 @@ Message_ConfigMessage *TaskConfig::ToMessage() {
   config_msg->set_bound(bound_);
   config_msg->set_key_range(key_range_);
   //assert(server_ip_.size() == server_port_.size());
-  int id = 0;
-  for (auto pr: id_to_addr_) {
-    config_msg->set_node_ip_port(pr.first, pr.second);
+  std::vector<std::pair<int32_t, std::string>> temp(id_to_addr_.begin(),
+    id_to_addr_.end());
+  std::sort(temp.begin(), temp.end());
+  for (auto pr: temp) {
+    config_msg->add_node_ip_port(pr.second);
   }
   for (auto id : server_id_) {
     config_msg->add_server_id(id);
