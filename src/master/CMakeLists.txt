@@ -9,3 +9,6 @@ target_link_libraries(master_main gflags message zmq_communicator master)
 
 add_executable(master_test master_test.cc)
 target_link_libraries(master_test gtest_main message zmq_communicator master gflags pthread gtest)
+
+add_executable(test_process test_process.cc)
+target_link_libraries(test_process message zmq_communicator master gflags pthread gtest)

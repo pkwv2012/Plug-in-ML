@@ -4,6 +4,7 @@
 //
 
 #include <string>
+#include <fstream>
 
 #include "src/communication/zmq_communicator.h"
 #include "src/master/master.h"
@@ -34,10 +35,16 @@ void Master::MainLoop() {
   while (! terminated) {
     std::string msg_str;
     LOG(INFO) << "Receiving";
-    receiver_->Receive(&msg_str);
+    int32_t len = receiver_->Receive(&msg_str);
+    std::fstream fs;
+    fs.open("master_msg.txt", std::fstream::app);
+    fs << msg_str << std::endl;
+    fs.close();
+    LOG(INFO) << "Master||Receive " << len << " bytes" << std::endl;
     LOG(INFO) << "Receive finish";
     Message msg;
     msg.ParseFromString(msg_str);
+    LOG(INFO) << msg.DebugString() << std::endl;
     switch (msg.message_type()) {
       case Message_MessageType_config:
       case Message_MessageType_request:
@@ -150,10 +157,10 @@ int32_t Master::Initialize(const std::string &master_ip_port) {
   std::cout << "Start Initialize";
   this->sender_.reset(new ZmqCommunicator());
   LOG(INFO) << "Create sender" << std::endl;
-  this->sender_->Initialize(16, true, FLAGS_listen_port, 128);
+  this->sender_->Initialize(16, true, FLAGS_listen_port);
   LOG(INFO) << "Sender finish" << std::endl;
   this->receiver_.reset(new ZmqCommunicator());
-  this->receiver_->Initialize(16, false, FLAGS_listen_port, 128);
+  this->receiver_->Initialize(16, false, FLAGS_listen_port);
   LOG(INFO) << "Master init finish." << "count = " << count << std::endl;
   return count;
 }

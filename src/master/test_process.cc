@@ -104,15 +104,30 @@ void ServerSimulator(std::string master_addr, int32_t server_port) {
 }
 
 // Create one master thread, one agent thread, one server thread.
-TEST(Master, RegisterTest) {
+int main() {
   FLAGS_listen_port = 16666;
   FLAGS_worker_num = 1;
   FLAGS_server_num = 1;
   //master->Initialize(FLAGS_master_listen_port);
   std::string master_addr = "127.0.0.1:16666";
   int32_t agent_port = 15555, server_port = 17777;
-  rpscc::Master* master = rpscc::Master::Get();
-  master->Initialize(master_addr);
+  int pid = fork();
+  if (pid == 0) {
+    rpscc::Master* master = rpscc::Master::Get();
+    master->Initialize(master_addr);
+    master->MainLoop();
+    return 0;
+  }
+  int pid2 = fork();
+  if (pid2 == 0) {
+    AgentSimulator(master_addr, agent_port);
+    return 0;
+  }
+  int pid3 = fork();
+  if (pid3 == 0) {
+    ServerSimulator(master_addr, server_port);
+    return 0;
+  }
   using namespace std::placeholders;
   //std::thread master_thread(std::bind(&Master::MainLoop, master));
   //std::thread agent_thread(std::bind(&AgentSimulator, master_addr, agent_port));
