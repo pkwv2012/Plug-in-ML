@@ -37,11 +37,12 @@ void Agent::SortKeyValue(int32* keys, float32* values, int32 size) {
 }
 
 // To Initialize the agent.
-bool Agent::Initialize(std::string para_fifo_name,
+bool Agent::Initialize(std::string para_fifo_name, 
                        std::string grad_fifo_name,
                        std::string para_memory_name,
                        std::string grad_memory_name,
-                       std::string master_addr) {
+                       std::string master_addr,
+                       const int16& listen_port) {
   // 1.Initialize sender
 
   cout << "1.Initialize sender" << endl;
@@ -62,7 +63,8 @@ bool Agent::Initialize(std::string para_fifo_name,
     printf("Initialize receiver failed.");
     return false;
   }
-  receiver_->Initialize(64/* ring_size */, false, 5555/* listen_port */);
+  listen_port_ = listen_port;
+  receiver_->Initialize(64/* ring_size */, false, listen_port_);
 
   // 3 Exchange messages with master
   // 3_1.Send this agent's local_ip_ to master, and receive config information
@@ -73,10 +75,10 @@ bool Agent::Initialize(std::string para_fifo_name,
     return false;
   }
 
-  cout << "3_1 Agent's ip is " << ip << endl;
+  cout << "3_1 Agent's <ip>:<port> is " << ip << " : " << listen_port_
+       << endl;
 
   local_ip_ = ip;
-  listen_port_ = 5555;
   Message msg_send;
   Message msg_recv;
   // Send register message to master, and receive config_msg.
@@ -176,6 +178,7 @@ void Agent::Finalize() {
   sender_->Finalize();
   receiver_->Finalize();
   partition_.Finalize();
+  cout << "Agent's Finalization is done" << endl;
 }
 
 bool Agent::Start() {

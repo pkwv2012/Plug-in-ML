@@ -31,6 +31,7 @@ void Init() {
                    master_addr);
   cout << "Agent: Start" << endl;
   agent.Start();
+  agent.Finalize();
 }
 
 void Mast() {

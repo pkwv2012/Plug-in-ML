@@ -40,7 +40,8 @@ class Agent {
                   std::string grad_fifo_name,
                   std::string para_memory_name,
                   std::string grad_memory_name,
-                  std::string master_addr);
+                  std::string master_addr,
+                  const int16& listen_port=5555);
   // Finalize the agent
   void Finalize();
   // To start the agent
