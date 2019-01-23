@@ -215,7 +215,6 @@ void Work() {
   string grad_fifo_name = "/tmp/cute_grad_fifo";
   string para_memory_name = "/cute_para_mem";
   string grad_memory_name = "/cute_grad_mem";
-  int32 shared_memory_size = 1024;
   
   int fd = shm_open(para_memory_name.c_str(), O_RDWR | O_CREAT, FILE_MODE);
   ftruncate(fd, sizeof(struct shmstruct));

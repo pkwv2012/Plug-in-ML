@@ -12,7 +12,9 @@ namespace rpscc {
     sem_init(&empty_sem_, 0, ring_size_);
     sem_init(&full_sem_, 0, 0);
     ring_ = new char*[ring_size_];
+    memset(ring_, 0, sizeof(ring_));
     data_sizes_ = new int[ring_size_];
+    memset(data_sizes_, 0, sizeof(data_sizes_));
     return true;
   }
   void FifoRing::Finalize() {
@@ -60,7 +62,9 @@ namespace rpscc {
     }
     int32 len = data_sizes_[index];
     memcpy(message, ring_[index], len);
-
+    delete[] ring_[index];
+    ring_[index] = nullptr;
+    
     sem_post(&empty_sem_);
     return len;
   }
