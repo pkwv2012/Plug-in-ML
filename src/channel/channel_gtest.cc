@@ -7,6 +7,7 @@
 #include "gtest/gtest.h"
 
 #include <iostream>
+#include <string>
 
 using namespace std;
 using namespace rpscc;
@@ -126,3 +127,135 @@ TEST(ChannelTest, ChannelTestWithPython) {
   }
   exit(0);
 }
+
+// Test with Liner regression
+TEST(ChannelTest, LinearRegressionTest) {
+  system("python Linear_Regression.py &");
+  string wf_name = "/tmp/lr_w_fifo";
+  string rf_name = "/tmp/lr_r_fifo";
+  string shm_w_name = "/shm_w_name";
+  string shm_r_name = "/shm_r_name";
+  int32 fd = shm_open(shm_w_name.c_str(), O_RDWR | O_CREAT, FILE_MODE);
+  ftruncate(fd, sizeof(struct shmstruct));
+  close(fd);
+  fd = shm_open(shm_r_name.c_str(), O_RDWR | O_CREAT, FILE_MODE);
+  ftruncate(fd, sizeof(struct shmstruct));
+  close(fd);
+
+  mkfifo(wf_name.c_str(), 0777);
+  mkfifo(rf_name.c_str(), 0777);
+  Fifo wf, rf;
+  wf.Initialize(wf_name, false);
+  rf.Initialize(rf_name, true);
+  SharedMemory rm, wm;
+  rm.Initialize(shm_r_name.c_str());
+  wm.Initialize(shm_w_name.c_str());
+
+  wf.Open(); rf.Open();
+  double b = 0, m = 0;
+  int32 sig;
+  shmstruct parameters, grad;
+  float32 learning_rate = 0.0001;
+  while(true) {
+    sig = rf.Wait();
+    if(sig == 0) {
+      parameters.size = 2;
+      parameters.keys[0] = 0;
+      parameters.keys[1] = 1;
+      parameters.values[0] = 0;
+      parameters.values[1] = 0;
+      wm.Write(&parameters);
+      wf.Signal(2);
+    } else if(sig == 1) {
+      grad = *rm.Read();
+      // cout << "c++" << endl;
+      // co      //   cout << grad.keys[i] << endl;
+      // }ut << grad.size << endl;
+      // for(int i=0; i<grad.size; i++) {
+      //   cout << grad.values[i] << endl;
+      //   cout << grad.keys[i] << endl;
+      // }x
+      b = b - (learning_rate * grad.values[0]);
+      m = m - (learning_rate * grad.values[1]);
+      parameters.size = 2;
+      parameters.keys[0] = 0;
+      parameters.keys[1] = 1;
+      parameters.values[0] = b;
+      parameters.values[1] = m;
+      wm.Write(&parameters);
+      wf.Signal(2);
+    } else {
+      break;
+    }
+  }
+  cout << b << " " << m << endl;
+  exit(0);
+}
+
+// Test with Liner regression for boston housing dataset
+// TEST(ChannelTest, BostonHousingTest) {
+//   system("python boston_housing.py &");
+//   string wf_name = "/tmp/bh_w_fifo";
+//   string rf_name = "/tmp/bh_r_fifo";
+//   string shm_w_name = "/bh_shm_w_name";
+//   string shm_r_name = "/bh_shm_r_name";
+//   int32 fd = shm_open(shm_w_name.c_str(), O_RDWR | O_CREAT, FILE_MODE);
+//   ftruncate(fd, sizeof(struct shmstruct));
+//   close(fd);
+//   fd = shm_open(shm_r_name.c_str(), O_RDWR | O_CREAT, FILE_MODE);
+//   ftruncate(fd, sizeof(struct shmstruct));
+//   close(fd);
+
+//   mkfifo(wf_name.c_str(), 0777);
+//   mkfifo(rf_name.c_str(), 0777);
+//   Fifo wf, rf;
+//   wf.Initialize(wf_name, false);
+//   rf.Initialize(rf_name, true);
+//   SharedMemory rm, wm;
+//   rm.Initialize(shm_r_name.c_str());
+//   wm.Initialize(shm_w_name.c_str());
+
+//   wf.Open(); rf.Open();
+//   double param[100];
+//   memset(param, 0, sizeof param);
+//   int32 sig;
+//   shmstruct parameters, grad;
+//   float32 learning_rate = 0.0001;
+//   int32 sz;
+//   while(true) {
+//     sig = rf.Wait();
+//     if(sig == 0) {
+//       grad = *rm.Read();
+//       parameters.size = grad.size;
+//       for(int i=0; i<grad.size; i++) {
+//         parameters.keys[i] = i;
+//         parameters.values[i] = param[i];
+//       }
+//       wm.Write(&parameters);
+//       wf.Signal(2);
+//     } else if(sig == 1) {
+//       grad = *rm.Read();
+//       // b = b - (learning_rate * grad.values[0]);
+//       // m = m - (learning_rate * grad.values[1]);
+//       sz = grad.size;
+//       for(int i=0; i<sz; i++) {
+//         param[i] = param[i] - (learning_rate * grad.values[i]);
+//       }
+
+//       parameters.size = sz;
+//       for(int i=0; i<sz; i++) {
+//         parameters.keys[i] = i;
+//         parameters.values[i] = param[i];
+//       }
+//       wm.Write(&parameters);
+//       wf.Signal(2);
+//     } else {
+//       break;
+//     }
+//   }
+//   for(int i=0; i<sz; i++) {
+//     cout << param[i] << " ";
+//   }
+//   cout << endl;
+//   exit(0);
+// }
