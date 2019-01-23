@@ -52,18 +52,18 @@ if __name__ == '__main__':
     coef = clf.coef_
     intercept = clf.intercept_
     keys = [i for i in range(5)]
-    transfer2Agent(coef, keys, w)
-    os.write(write_fifo, struct.pack('i', 1))   # notify the Agent
-    os.read(read_fifo, 4)       # wait to pull from Agent
-    coef, keys = readFromAgent(m)
     # print coef
-    for i in range(1, 5):
+    for i in range(0, 5):
+        transfer2Agent([], keys, w)
+        os.write(write_fifo, struct.pack('i', 0))
+        os.read(read_fifo, 4);
+        coef, keys = readFromAgent(m)
         clf.fit(X[i*200:(i+1)*200,:], y[i*200:(i+1)*200], coef_init=coef, intercept_init=intercept);
-        coef = clf.coef_
-        intercept = clf.intercept_
+        coef = clf.coef_ - coef
+        #intercept = clf.intercept_
         transfer2Agent(coef, keys, w)
         os.write(write_fifo, struct.pack('i', 1))
-        os.read(read_fifo, 4)
-        coef, keys = readFromAgent(m)
+
+    os.write(write_fifo, struct.pack('i', 2))
     #print X[0:100, :]
     #print clf.predict(X[0:100, :])

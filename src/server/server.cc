@@ -46,6 +46,7 @@ bool Server::Initialize() {
   std::string config_str;
   reg_msg->set_ip(local_address_);
   reg_msg->set_is_server(true);
+  reg_msg->set_port(FLAGS_server_port);
   msg_send->set_message_type(Message_MessageType_register_);
   msg_send->set_recv_id(0);
   msg_send->set_send_id(-1);
