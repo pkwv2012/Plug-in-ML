@@ -3,13 +3,14 @@
 // Created by PeikaiZheng on 2018/12/8.
 //
 
-#include <string>
+#include <chrono>
 #include <fstream>
+#include <string>
+#include <thread>
 
 #include "src/communication/zmq_communicator.h"
 #include "src/master/master.h"
 #include "src/util/logging.h"
-#include "master.h"
 
 
 namespace rpscc {
@@ -17,6 +18,9 @@ namespace rpscc {
 DEFINE_int32(heartbeat_timeout, 30, "The maximum time to decide "
   "whether the node is offline");
 DEFINE_int32(listen_port, 16666, "The listening port of cluster.");
+DEFINE_int32(heartbeat_gap, 3, "The heartbeat gap.");
+DEFINE_int32(detect_dead_node, 5, "The time gap to detect dead node.");
+DEFINE_int32(max_cluster_node, 10000, "The maximum cluster number.");
 
 
 void Master::WaitForClusterReady() {
@@ -32,7 +36,7 @@ void Master::Initialize(const int16 &listen_port) {
 void Master::MainLoop() {
   std::cout << "Main loop";
   bool terminated = false;
-  while (! terminated) {
+  while (!terminated) {
     std::string msg_str;
     LOG(INFO) << "Receiving";
     int32_t len = receiver_->Receive(&msg_str);
@@ -48,7 +52,7 @@ void Master::MainLoop() {
     switch (msg.message_type()) {
       case Message_MessageType_config:
       case Message_MessageType_request:
-        LOG (INFO) << "Invalid message type";
+        LOG(INFO) << "Invalid message type";
         break;
 
       case Message_MessageType_heartbeat: {
@@ -63,8 +67,14 @@ void Master::MainLoop() {
         if (config_.Ready()) {
           LOG(INFO) << "Cluster ready!";
           config_.GeneratePartition();
-          for (auto pr: config_.get_id_to_addr()) {
+          for (auto pr : config_.get_id_to_addr()) {
             sender_->AddIdAddr(pr.first, pr.second);
+            std::stringstream ss(pr.second);
+            std::string ip, port;
+            std::getline(ss, ip, ':');
+            std::getline(ss, port, ':');
+            sender_->AddIdAddr(pr.first + FLAGS_max_cluster_node,
+                ip + ":" + std::to_string(std::stoi(port) + 1));
           }
           DeliverConfig();
         }
@@ -73,6 +83,13 @@ void Master::MainLoop() {
                   << "worker_cur_num=" << config_.agent_id().size()
                   << "server_cur_num=" << config_.server_id().size()
                   << std::endl;
+        std::thread heartbeat_thread(
+            std::bind(&Master::DeliverHeartbeatLoop, this));
+        time_t cur_time = time(NULL);
+        for (int i = 0; i < config_.get_node_ip().size(); ++i) {
+          alive_node_[i] = cur_time;
+        }
+
         break;
       }
       case Message_MessageType_terminate: {
@@ -93,11 +110,11 @@ Master::Master() {
 
 bool Master::DeliverConfig() {
   Message* msg = new Message();
-  msg->set_send_id(0); // Id of master
+  msg->set_send_id(0);  // Id of master
   msg->set_message_type(Message_MessageType_config);
   msg->set_allocated_config_msg(config_.ToMessage());
   LOG(INFO) << "config right" << std::endl;
-  for (int32_t i = 0; i < config_.get_node_ip().size(); ++ i) {
+  for (int32_t i = 0; i < config_.get_node_ip().size(); ++i) {
     msg->set_recv_id(i);
     LOG(INFO) << i << std::endl;
     auto send_byte = sender_->Send(i, msg->SerializeAsString());
@@ -126,16 +143,16 @@ void Master::ProcessHeartbeatMsg(const Message& msg) {
   CHECK(heartbeat_msg.is_live());
   auto send_id = msg.send_id();
   time_t cur_time = time(NULL);
-  //CHECK(alive_node_.find(send_id) != alive_node_.end());
+  // CHECK(alive_node_.find(send_id) != alive_node_.end());
   alive_node_[send_id] = cur_time;
-  LOG (INFO) << "Heartbeat from " << send_id << ", ip = "
+  LOG(INFO) << "Heartbeat from " << send_id << ", ip = "
              << config_.GetIp(send_id);
 }
 
 std::vector<int> Master::GetDeadNode() {
   std::vector<int> dead_node;
   auto cur_time = time(NULL);
-  for (const auto& pr: alive_node_) {
+  for (const auto& pr : alive_node_) {
     if (pr.second + FLAGS_heartbeat_timeout < cur_time) {
       dead_node.push_back(pr.first);
     }
@@ -151,7 +168,7 @@ int32_t Master::Initialize(const std::string &master_ip_port) {
     std::getline(ss, ip_port, ',');
     if (ip_port.size() > 0) {
       config_.AppendMaster(ip_port);
-      ++ count;
+      ++count;
     }
   }
   std::cout << "Start Initialize";
@@ -165,4 +182,41 @@ int32_t Master::Initialize(const std::string &master_ip_port) {
   return count;
 }
 
+// Master should deliver the heartbeat message to a new port of node.
+// So that we should deliver message to recv_id + FLAGS_max_cluster_node,
+// because the zmq_sender map <id> to <ip>:<port>.
+void Master::DeliverHeartbeat() {
+  Message* msg = new Message();
+  msg->set_send_id(0);  // Id of master
+  msg->set_message_type(Message_MessageType_heartbeat);
+  Message_HeartbeatMessage* heartbeat_msg = new Message_HeartbeatMessage();
+  heartbeat_msg->set_is_live(true);
+  msg->set_allocated_heartbeat_msg(heartbeat_msg);
+  LOG(INFO) << "Heartbeat right" << std::endl;
+  for (int32_t i = 0; i < config_.get_node_ip().size(); ++i) {
+    msg->set_recv_id(i + FLAGS_max_cluster_node);
+    LOG(INFO) << i << std::endl;
+    auto send_byte = sender_->Send(i, msg->SerializeAsString());
+    LOG(INFO) << "Send to " << i << " heartbeat of " << send_byte;
+  }
+  delete msg;
 }
+
+void Master::DeliverHeartbeatLoop() {
+  while (1) {
+    DeliverHeartbeat();
+    std::this_thread::sleep_for(
+        std::chrono::microseconds(FLAGS_heartbeat_gap * 1000));
+  }
+}
+
+void Master::DetectDeadNode() {
+  while (1) {
+    auto dead_node = GetDeadNode();
+    // If there are dead_node, master should restart the node.
+    std::this_thread::sleep_for(
+        std::chrono::microseconds(FLAGS_detect_dead_node * 1000));
+  }
+}
+
+}  // namespace rpscc

@@ -7,6 +7,8 @@
 #define SRC_MASTER_MASTER_H_
 
 #include <mutex>
+#include <string>
+#include <vector>
 
 #include "src/communication/communicator.h"
 #include "src/message/message.pb.h"
@@ -26,7 +28,7 @@ class Master {
     return &master;
   }
 
-  void Initialize(const int16& listen_port=12018);
+  void Initialize(const int16& listen_port = 12018);
   // Return: the number of valid master.
   int32_t Initialize(const std::string& master_ip_port);
 
@@ -39,11 +41,20 @@ class Master {
   // Deal with all type of message.
   void MainLoop();
 
+
+  // Detecting dead node.
+  void DetectDeadNode();
+
   // Get the dead node
   std::vector<int> GetDeadNode();
 
- private:
+  // Deliver heartbeat loop.
+  void DeliverHeartbeatLoop();
 
+  // Deliver heartbeat message to all node.
+  void DeliverHeartbeat();
+
+ private:
   // Deal with register message
   void ProcessRegisterMsg(Message* msg);
 

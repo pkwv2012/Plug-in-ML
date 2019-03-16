@@ -49,6 +49,8 @@ message Message {
 
   message HeartbeatMessage {
     bool is_live = 1;
+    // Agent return the number of pushing parameters to master.
+    int32 agent_epoch_num = 2;
   }
 
   int32 send_id = 1;
