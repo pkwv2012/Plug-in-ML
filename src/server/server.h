@@ -6,6 +6,7 @@
 #include <deque>
 #include <map>
 #include <queue>
+#include <hash_set>
 #include <string>
 #include <vector>
 
@@ -37,6 +38,7 @@ class Server {
  protected:
   std::unique_ptr<Communicator> sender_;
   std::unique_ptr<Communicator> receiver_;
+  std::unique_ptr<Communicator> receiver_heatbeat_;
 
   std::string local_address_;
   uint32 local_id_;
@@ -49,17 +51,22 @@ class Server {
 
   std::vector<uint32> master_ids_;
   std::vector<uint32> server_ids_;
+  __gnu_cxx::hash_set<uint32> agent_ids_;
   std::vector<float> parameters_;
   std::vector<std::queue<KeyValueList> > version_buffer_;
   std::deque<uint32> finish_count_;
   std::queue<PullInfo> pull_request_;
   std::map<uint32, uint32> id_to_index_;
 
+  // Thread for heartbeat
+  pthread_t heartbeat_;
 
   bool RespondToAll();
   void UpdateParameter();
   void ServePull(uint32 sender_id, const Message_RequestMessage &request);
   void ServePush(uint32 sender_id, const Message_RequestMessage &request);
+  static void* HeartBeat(void* arg);
+  void Reconfigurate(const Message_ConfigMessage &config);
 };
 
 }  // namespace rpscc

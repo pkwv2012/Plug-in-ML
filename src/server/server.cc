@@ -12,6 +12,8 @@ namespace rpscc {
 
 DEFINE_string(net_interface, "",
   "Name of the net interface used by the node.");
+
+// note that server heartbeat port equals "server_port" + 1
 DEFINE_int32(server_port, 8888, "Port used by the server receiver.");
 DEFINE_int32(ring_size, 64, "Size of communicator's message queue.");
 DEFINE_int32(buffer_size, 2048, "Size of each message's buffer.");
@@ -22,12 +24,14 @@ DEFINE_string(master_ip_port, "", "IP and Port of the first master node.");
 // master and receiving related configuration information.
 bool Server::Initialize() {
   // First initialize server communicators
-  // TODO(Song Xu): decide size and port for initialize
   sender_.reset(new ZmqCommunicator());
   receiver_.reset(new ZmqCommunicator());
+  receiver_heatbeat_.reset(new ZmqCommunicator());
   sender_->Initialize(FLAGS_ring_size, true, 1024, FLAGS_buffer_size);
   sender_->AddIdAddr(0, FLAGS_master_ip_port);
   receiver_->Initialize(FLAGS_ring_size, false, FLAGS_server_port,
+    FLAGS_buffer_size);
+  receiver_heatbeat_->Initialize(FLAGS_ring_size, false, FLAGS_server_port + 1,
     FLAGS_buffer_size);
 
   // Send the server local ip to master and receive config information
@@ -101,6 +105,11 @@ bool Server::Initialize() {
   if (found_local == false) {
     LOG(ERROR) << "Nothing is found to be assigned to the server.";
     return false;
+  }
+
+  // Initialize agent id set
+  for (uint32 i = 0; i < config_msg.worker_id_size(); ++i) {
+    agent_ids_.insert(config_msg.worker_id(i));
   }
 
   // Initialize master ids.
@@ -182,6 +191,9 @@ void Server::UpdateParameter() {
 // handle the requests according to their type. It is here that
 // UpdateParameter() and ResponseAll() will be called.
 void Server::Start() {
+  // first initialize heartbeat handling thread
+  pthread_create(&heartbeat_, NULL, HeartBeat, reinterpret_cast<void*>(this));
+
   while (true) {
     std::string recv_str;
     receiver_->Receive(&recv_str);
@@ -201,6 +213,11 @@ void Server::Start() {
         ServePull(sender_id, request);
       }
     }
+
+    if (msg_recv.message_type() == Message_MessageType_config) {
+      Message_ConfigMessage config_msg = msg_recv.config_msg();
+      Reconfigurate(config_msg);
+    }
   }
 }
 
@@ -211,7 +228,7 @@ void Server::Start() {
 // to the blocked workers.
 void Server::ServePush(uint32 sender_id,
   const Message_RequestMessage &request) {
-  if (id_to_index_.find(sender_id) == id_to_index_.end()) {
+  if (agent_ids_.find(sender_id) == agent_ids_.end()) {
     LOG(ERROR) << "Got push request from worker " << sender_id
                << ", which is unknown by the server.";
     return;
@@ -303,6 +320,109 @@ void Server::ServePull(uint32 sender_id,
     if (sender_->Send(sender_id, reply_str) == -1) {
       LOG(ERROR) << "Failed to respond to worker " << sender_id
         << "'s pull request.";
+    }
+  }
+}
+
+// Heartbeat function receives liveness check from master and reply as a
+// heartbeat. Server won't terminate itself or change to a new master if
+// current master is not heard for a long time. Instead, it waits for
+// another master to send live check to it.
+void* Server::HeartBeat(void* arg) {
+  Server* server = reinterpret_cast<Server*>(arg);
+  Message send_msg, recv_msg;
+  Message_HeartbeatMessage* hb_msg = new Message_HeartbeatMessage();
+  std::string send_str, recv_str;
+
+  hb_msg->set_is_live(true);
+  send_msg.set_message_type(Message_MessageType_heartbeat);
+  send_msg.set_send_id(server->local_id_);
+
+  while (1) {
+    if (server->receiver_heatbeat_->Receive(&recv_str) == -1) {
+      LOG(ERROR) << "Error in receiving heartbeat from master";
+    }
+    recv_msg.ParseFromString(recv_str);
+
+    // Config the send_msg
+    send_msg.set_recv_id(recv_msg.send_id());
+    send_msg.set_allocated_heartbeat_msg(hb_msg);
+    send_msg.SerializeToString(&send_str);
+
+    if (server->sender_->Send(0, send_str) == -1) {
+      LOG(ERROR) << "Cannot send a heartbeat to master";
+    }
+  }
+}
+
+// when server receives a re-config order from masterm it will
+// change the system meta data stored.
+void Server::Reconfigurate(const Message_ConfigMessage &config_msg) {
+  agent_num_ = config_msg.worker_num();
+  server_num_ = config_msg.server_num();
+
+  // Reconfiguration of sender's id mapping to ip-ports, where the id 0 is
+  // already added.
+  for (uint32 i = 1; i < config_msg.node_ip_port_size(); ++i) {
+    sender_->AddIdAddr(i, config_msg.node_ip_port(i));
+  }
+
+  // Reconfigurate server ids, and record local parameter range from
+  // config_msg.partition.
+  // Note that config_msg.partition should be a array of length #server + 1.
+  // It's first element must be 0 and the last must be config_msg.key_range.
+  bool found_local = false;
+  server_ids_.clear();
+  for (uint32 i = 0; i < server_num_; ++i) {
+    uint32 server_i_id = config_msg.server_id(i);
+    server_ids_.push_back(server_i_id);
+    if (server_i_id == local_id_) {
+      start_key_ = config_msg.partition(i);
+      parameter_length_ = config_msg.partition(i + 1) - start_key_;
+      found_local = true;
+    }
+  }
+  if (found_local == false) {
+    LOG(ERROR) << "Nothing is found to be assigned to the server.";
+    exit(1);
+  }
+
+  // if an agent recorded in the server is not in the new configuration,
+  // the agent is considered to be out of service. Therefore, server need
+  // to first remove the agent's last updates.
+  __gnu_cxx::hash_set<uint32>::iterator begin = agent_ids_.begin(),
+  end = agent_ids_.end(), iter;
+  for (iter = begin; iter != end; iter++) {
+    bool found = false;
+    for (uint32 i = 0; i < config_msg.worker_id_size(); ++i) {
+      if (config_msg.worker_id(i) == *iter) {
+        found = true;
+        break;
+      }
+    }
+    if (found == false) {
+      for (uint32 i = 0; i < version_buffer_[id_to_index_[*iter]].size();
+        ++i)
+        finish_count_[i]--;
+    }
+  }
+  // refresh agent id set
+  agent_ids_.clear();
+  for (uint32 i = 0; i < config_msg.worker_id_size(); ++i) {
+    agent_ids_.insert(config_msg.worker_id(i));
+  }
+
+  // refresh master ids.
+  master_ids_.clear();
+  for (uint32 i = 0; i < config_msg.master_id_size(); ++i) {
+    master_ids_.push_back(config_msg.master_id(i));
+  }
+
+  // refresh map from worker ID to version buffer index
+  for (uint32 i = 0; i < agent_num_; ++i) {
+    if (id_to_index_.find(config_msg.worker_id(i)) == id_to_index_.end()) {
+      id_to_index_[config_msg.worker_id(i)] = version_buffer_.size();
+      version_buffer_.push_back(std::queue<KeyValueList>());
     }
   }
 }
