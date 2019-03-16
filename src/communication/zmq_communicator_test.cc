@@ -23,7 +23,7 @@ int main(int argc, char* argv[]) {
   } else {
     printf("You create a sender\n");
     comm.Initialize(16, true, port, 128);
-    comm.AddIdAddr(1, "172.17.0.1:5555");
+    comm.AddIdAddr(1, "127.0.0.1:5555");
     for (int i = 0; i < 10; i++) {
       sprintf(message, "Hello %d", i);
       comm.Send(1, message, strlen(message)); 

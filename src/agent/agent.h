@@ -36,7 +36,7 @@ class Agent {
   // grad_memory_name are shared memory files' names, the shared memory files
   // work as data channels between agent and worker, and the data in the shared
   // memory files is parameter data or gradient data about parameters.
-  bool Initialize(std::string para_fifo_name, 
+  bool Initialize(std::string para_fifo_name,
                   std::string grad_fifo_name,
                   std::string para_memory_name,
                   std::string grad_memory_name,
@@ -46,9 +46,9 @@ class Agent {
   void Finalize();
   // To start the agent
   bool Start();
-  
+
  private:
-  // The Agent's information, local_port_ indicate the port for which this 
+  // The Agent's information, local_port_ indicate the port for which this
   // agent is listening.
   int32 local_id_;
   std::string local_ip_;
@@ -58,40 +58,46 @@ class Agent {
   int32 server_num_;
   int32 key_range_;
   std::vector<int32> server_id_list_;
-  
+
   // Sender and Receiver for agent.
   std::unique_ptr<Communicator> sender_;
   std::unique_ptr<Communicator> receiver_;
-  
+
   // Fifo for communication with worker
   std::string para_fifo_name_;
   std::string grad_fifo_name_;
   Fifo para_fifo_;
   Fifo grad_fifo_;
-  
+
   // Shared memory for transfering data with worker
   std::string para_memory_name_;
   std::string grad_memory_name_;
   SharedMemory para_memory_;
   SharedMemory grad_memory_;
-  
+
   // Key-value list for pushing
   std::vector<int32> keys_;
   std::vector<float32> values_;
-  
+
   // gradients_ is read from worker, and it will be pushed to servers
   shmstruct gradients_;
-  
+
   // parameters_ is pulled from servers, and it will be sent to worker
   shmstruct parameters_;
-  
+
   // Partition message to server
   Partition partition_;
-  
+
+  // Thread for heartbeat
+  pthread_t heartbeat_;
+
   bool AgentWork();
   bool Push();
   bool Pull();
-  
+
+  // HeartBeat with master
+  static void* HeartBeat(void* arg);
+
   // To sort the key list and value list
   void SortKeyValue(int32* keys, float32* values, int32 size);
 };

@@ -44,13 +44,13 @@ int32 ZmqSendRecv::Send(std::string dst_addr, const char* const message,
   // If there is not a open socket for assigend address, create one socket
   std::map<std::string, void*>::iterator iter = mapper_.find(dst_addr);
   if (iter == mapper_.end()) {
-    LOG(INFO) << "Create a new socket." << std::endl;
+    // LOG(INFO) << "Create a new socket." << std::endl;
     void *sender_ = zmq_socket(context_, ZMQ_PUSH);
     char str[32];
     snprintf(str, sizeof(str), "tcp://%s", dst_addr.c_str());
-    LOG(INFO) << "str = " << str << std::endl;
+    // LOG(INFO) << "str = " << str << std::endl;
     zmq_connect(sender_, str);
-    LOG(INFO) << "Connection established." << std::endl;
+    // LOG(INFO) << "Connection established." << std::endl;
     mapper_.insert(std::make_pair(dst_addr, sender_));
     sendrecv_ = sender_;
   } else {
@@ -60,7 +60,7 @@ int32 ZmqSendRecv::Send(std::string dst_addr, const char* const message,
   // Start sending message
   //printf("message = %s, len = %d\n", message, len);
   int rc = zmq_send(sendrecv_, message, len, 0);
-  LOG(INFO) << "ZmqSend bytes = " << rc << std::endl;
+  // LOG(INFO) << "ZmqSend bytes = " << rc << std::endl;
   //printf("Send_rc = %d\n", rc);
   // I will add a error handler in the future.
   return len;

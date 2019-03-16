@@ -11,8 +11,10 @@
 #include "src/message/message.pb.h"
 #include "src/util/logging.h"
 #include "src/util/network_util.h"
+#include "agent.h"
 
-using namespace std;
+using std::cout;
+using std::endl;
 
 namespace rpscc {
 
@@ -20,8 +22,8 @@ namespace rpscc {
 DEFINE_string(net_interface, "",
               "Name of the net interface used by the node.");
 
-// This is a sorter for key list and value list stroed in the agent. During the
-// sorting, keys and values will keep thier relative positions.
+// This is a sorter for key list and value list sorted in the agent. During the
+// sorting, keys and values will keep their relative positions.
 void Agent::SortKeyValue(int32* keys, float32* values, int32 size) {
   std::map<int32, int32> key_map;
   std::vector<float32> tmp_values(values, values + size);
@@ -97,6 +99,7 @@ bool Agent::Initialize(std::string para_fifo_name,
   msg_send.set_allocated_register_msg(reg_msg_ptr);
   msg_send.SerializeToString(&reg_str);
   cout << "3_1 Sending register string to master" << endl;
+  // TODO: Parse the master_addr
   sender_->AddIdAddr(0, master_addr);
   if (sender_->Send(0, reg_str) == -1) {
     LOG(INFO) << "Cannot send register message to master" << endl;
@@ -171,6 +174,7 @@ bool Agent::Initialize(std::string para_fifo_name,
   para_memory_.Initialize(para_memory_name_.c_str());
   grad_memory_.Initialize(grad_memory_name_.c_str());
   LOG(INFO) << "Agent's initialization is done" << endl;
+
   return true;
 }
 
@@ -182,6 +186,10 @@ void Agent::Finalize() {
 }
 
 bool Agent::Start() {
+  // Start a thread to support the feature of heartbeat
+  cout << "Start a thread to support the feature of heartbeat" << endl;
+  pthread_create(&heartbeat_, NULL, HeartBeat, reinterpret_cast<void*>(this));
+
   para_fifo_.Open();
   grad_fifo_.Open();
   if (!AgentWork()) {
@@ -324,6 +332,8 @@ bool Agent::Push() {
 
     start = end;
   }
+
+  return true;
 }
 
 bool Agent::Pull() {
@@ -337,7 +347,7 @@ bool Agent::Pull() {
   std::set<int32> server_set;
 
   // Sort the key_list_
-  sort(parameters_.keys, parameters_.keys + parameters_.size);
+  std::sort(parameters_.keys, parameters_.keys + parameters_.size);
 
   // Set the message type
   msg_send_recv.set_message_type(Message_MessageType_request);
@@ -458,6 +468,55 @@ bool Agent::Pull() {
   }
   parameters_.size = cur;
   cout << "Agent: parameters_.size = " << parameters_.size << endl;
+  return true;
+}
+
+void* Agent::HeartBeat(void* arg) {
+  Agent* agent = reinterpret_cast<Agent*>(arg);
+  std::unique_ptr<Communicator> hreceiver;
+
+  hreceiver.reset(new ZmqCommunicator());
+  if (hreceiver.get() == NULL) {
+    cout << "Initialize hreceiver failed." << endl;
+    return nullptr;
+  }
+  hreceiver->Initialize(64/* ring_size */, false, agent->listen_port_ + 1);
+
+  Message msg;
+  Message_HeartbeatMessage* hb_msg = new Message_HeartbeatMessage();
+  std::string send_str, recv_str;
+
+  hb_msg->set_is_live(true);
+  msg.set_message_type(Message_MessageType_heartbeat);
+  msg.set_recv_id(0);
+  msg.set_send_id(agent->local_id_);
+
+  msg.set_allocated_heartbeat_msg(hb_msg);
+  msg.SerializeToString(&send_str);
+
+  while (1) {
+    sleep(1);
+    if (agent->sender_->Send(0, send_str) == -1) {
+      cout << "Cannot send a heartbeat to master" << endl;
+    }
+    cout << "Sent heartbeat to master" << endl;
+
+    if (hreceiver->Receive(&recv_str) == -1) {
+      cout << "Error in receiving heartbeat from master" << endl;
+    }
+    cout << "Received heartbeat from master" << endl;
+
+    msg.ParseFromString(recv_str);
+    if (msg.message_type() != Message_MessageType_heartbeat) {
+      cout << "Receive an unknown type of message" << endl;
+    }
+    if (!msg.has_heartbeat_msg()) {
+      cout << "There is no heartbeat_msg in msg" << endl;
+    }
+    else if (!msg.heartbeat_msg().is_live()) {
+      cout << "The heartbeat_msg is not live" << endl;
+    }
+  }
 }
 
 }  // namespace rpscc

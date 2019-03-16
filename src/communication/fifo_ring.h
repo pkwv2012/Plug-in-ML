@@ -14,7 +14,7 @@
 
 namespace rpscc {
 
-// FifoRing is a implemention of round-robin queue.
+// FifoRing is an implemention of round-robin queue.
 // This ring now support one producer and one consumer to work at the same
 // time, and it is thread-safe.
 class FifoRing {

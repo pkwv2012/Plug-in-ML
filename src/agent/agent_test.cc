@@ -15,17 +15,22 @@ using namespace std;
 
 // In this test, the <id>:<ip>:<port> list is as follows:
 // Master 0 : 127.0.0.1       : 5000
+// HeartBeat 0 : 127.0.0.1    : 5001
 // Agent  1 : 127.0.0.1       : 5555
 // Server 2 : 127.0.0.1       : 5005
 // Server 3 : 129.0.0.1       : 5006
 
+string master_addr = "127.0.0.1:5000";
+string agent_addr = "127.0.0.1:5555";
+string agent_heartbeat_addr = "127.0.0.1:5556";
+string server_addr = "127.0.0.1:5005";
+string server3_addr = "127.0.0.1:5006";
 void Init() {
   Agent agent;
   string para_fifo_name = "/tmp/cute_para_fifo";
   string grad_fifo_name = "/tmp/cute_grad_fifo";
   string para_memory_name = "/cute_para_mem";
   string grad_memory_name = "/cute_grad_mem";
-  string master_addr = "127.0.0.1:5000";
   agent.Initialize(para_fifo_name, grad_fifo_name,
                    para_memory_name, grad_memory_name,
                    master_addr);
@@ -61,14 +66,14 @@ void Mast() {
          << reg_msg.port() << " is_server = " << reg_msg.is_server() << endl;
     
     string agent_addr = reg_msg.ip() + ":" + to_string(reg_msg.port());
-    sender.AddIdAddr(1, agent_addr);
+    sender.AddIdAddr(1, "127.0.0.1:5555");
     
     config_msg->set_worker_num(1);
     config_msg->set_server_num(2);
     config_msg->set_key_range(5);
     
     config_msg->add_node_ip_port("127.0.0.1:5000");
-    config_msg->add_node_ip_port(agent_addr);
+    config_msg->add_node_ip_port("127.0.0.1:5555");
     config_msg->add_node_ip_port("127.0.0.1:5005");
     config_msg->add_node_ip_port("127.0.0.1:5006");
 
@@ -94,12 +99,109 @@ void Mast() {
   }
   while (true) {
     cout << "Master: Wait for agent's terminate request" << endl;
+    Message msg;
+    Message_HeartbeatMessage* hb_msg = new Message_HeartbeatMessage();
+    std::string send_str, recv_str;
+
+    hb_msg->set_is_live(true);
+    msg.set_message_type(Message_MessageType_heartbeat);
+    msg.set_recv_id(1);
+    msg.set_send_id(0);
+
+    msg.set_allocated_heartbeat_msg(hb_msg);
+    msg.SerializeToString(&send_str);
+
+    sender.AddIdAddr(2, "127.0.0.1:5556");
+
+    while (1) {
+      sleep(1);
+      if (receiver.Receive(&recv_str) == -1) {
+        cout << "Error in receiving heartbeat from agent" << endl;
+      }
+      cout << "Received heartbeat from agent" << endl;
+
+      msg.ParseFromString(recv_str);
+      if (msg.message_type() != Message_MessageType_heartbeat) {
+        cout << "Receive an unknown type of message" << endl;
+      }
+      if (!msg.has_heartbeat_msg()) {
+        cout << "There is no heartbeat_msg in msg" << endl;
+      }
+      else if (!msg.heartbeat_msg().is_live()) {
+        cout << "The heartbeat_msg is not live" << endl;
+      }
+
+      if (sender.Send(2, send_str) == -1) {
+        cout << "Cannot send a heartbeat to agent" << endl;
+      }
+      cout << "Sent heartbeat to agent" << endl;
+
+    }
+    /*
     receiver.Receive(&reg_str);
     msg_recv.ParseFromString(reg_str);
     cout << "Master: Receive " << msg_recv.DebugString() << endl;
+     */
   }
 }
 
+void HeartBeat() {
+  int16 listen_port = 5001;
+  std::unique_ptr<Communicator> hsender, hreceiver;
+
+
+  hsender.reset(new ZmqCommunicator());
+  if (hsender.get() == NULL) {
+    cout << "Initialize hsender failed." << endl;
+    return;
+  }
+  hsender->Initialize(64/* ring_size */, true, 1024/* listen_port */);
+
+  hreceiver.reset(new ZmqCommunicator());
+  if (hreceiver.get() == NULL) {
+    cout << "Initialize hreceiver failed." << endl;
+    return;
+  }
+  hreceiver->Initialize(64/* ring_size */, false, listen_port);
+
+  Message msg;
+  Message_HeartbeatMessage* hb_msg = new Message_HeartbeatMessage();
+  std::string send_str, recv_str;
+
+  hb_msg->set_is_live(true);
+  msg.set_message_type(Message_MessageType_heartbeat);
+  msg.set_recv_id(1);
+  msg.set_send_id(0);
+
+  msg.set_allocated_heartbeat_msg(hb_msg);
+  msg.SerializeToString(&send_str);
+  hsender->AddIdAddr(1, agent_heartbeat_addr);
+
+  while (1) {
+    sleep(1);
+    if (hreceiver->Receive(&recv_str) == -1) {
+      cout << "Error in receiving heartbeat from agent" << endl;
+    }
+    cout << "Received heartbeat from agent" << endl;
+
+    msg.ParseFromString(recv_str);
+    if (msg.message_type() != Message_MessageType_heartbeat) {
+      cout << "Receive an unknown type of message" << endl;
+    }
+    if (!msg.has_heartbeat_msg()) {
+      cout << "There is no heartbeat_msg in msg" << endl;
+    }
+    else if (!msg.heartbeat_msg().is_live()) {
+      cout << "The heartbeat_msg is not live" << endl;
+    }
+
+    if (hsender->Send(1, send_str) == -1) {
+      cout << "Cannot send a heartbeat to agent" << endl;
+    }
+    cout << "Sent heartbeat to agent" << endl;
+
+  }
+}
 // In the future test, the port and key_value will be the parameters of Serve.
 // So I can emit the function Serve3().
 void Serve() {
@@ -116,7 +218,7 @@ void Serve() {
   
   sender.Initialize(64, true, 1024);
   receiver.Initialize(64, false, server_port);
-  sender.AddIdAddr(1, "127.0.0.1:5555");
+  sender.AddIdAddr(1, agent_addr);
   while (true) {
     cout << "Server: Wait for agent's request" << endl;
     int rc = receiver.Receive(&msg_str);
@@ -168,7 +270,7 @@ void Serve3() {
   
   sender.Initialize(64, true, 1024);
   receiver.Initialize(64, false, server_port);
-  sender.AddIdAddr(1, "127.0.0.1:5555");
+  sender.AddIdAddr(1, agent_addr);
   while (true) {
     cout << "Server3: Wait for agent's request" << endl;
     int rc = receiver.Receive(&msg_str);
@@ -274,8 +376,41 @@ void Work() {
 }
 
 int main(int argc, char* argv[]) {
-  gflags::ParseCommandLineFlags(&argc, &argv, false);
-  
+  // gflags::ParseCommandLineFlags(&argc, &argv, false);
+  cout << argc << endl;
+  if (argc != 2) {
+    cout << "There should be 2 arguments" << endl;
+    return 0;
+  } else {
+    string type = argv[1];
+    if (type == "agent") {
+      Init();
+      return 0;
+    }
+    if (type == "master") {
+      Mast();
+      return 0;
+    }
+    if (type == "server") {
+      Serve();
+      return 0;
+    }
+    if (type == "server3") {
+      Serve3();
+      return 0;
+    }
+    if (type == "worker") {
+      Work();
+      return 0;
+    }
+    if (type == "heartbeat") {
+      HeartBeat();
+      return 0;
+    }
+    cout << "Unknown type" << endl;
+  }
+
+  /*
   // Test initialization
   int pid = fork();
   if (pid == 0) {
@@ -300,7 +435,7 @@ int main(int argc, char* argv[]) {
     return 0;
   }
   Work();
-  
-  cout << "done" << endl;
+  */
+
   return 0;
 }

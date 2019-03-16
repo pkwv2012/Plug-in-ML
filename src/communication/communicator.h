@@ -25,7 +25,7 @@ class Communicator {
   // true : Init successfully
   // false : Init failed
   virtual bool Initialize(int32 ring_size, bool is_sender,
-                  int16 listen_port, int32 buffer_size=2048) = 0;
+                  int16 listen_port, int32 buffer_size = 2048) = 0;
 
   // Send a message from one node to another node,
   // Return:
