@@ -115,6 +115,12 @@ void Mast() {
 
     while (1) {
       sleep(1);
+
+      if (sender.Send(2, send_str) == -1) {
+        cout << "Cannot send a heartbeat to agent" << endl;
+      }
+      cout << "Sent heartbeat to agent" << endl;
+
       if (receiver.Receive(&recv_str) == -1) {
         cout << "Error in receiving heartbeat from agent" << endl;
       }
@@ -130,12 +136,7 @@ void Mast() {
       else if (!msg.heartbeat_msg().is_live()) {
         cout << "The heartbeat_msg is not live" << endl;
       }
-
-      if (sender.Send(2, send_str) == -1) {
-        cout << "Cannot send a heartbeat to agent" << endl;
-      }
-      cout << "Sent heartbeat to agent" << endl;
-
+      break;
     }
     /*
     receiver.Receive(&reg_str);
@@ -145,63 +146,6 @@ void Mast() {
   }
 }
 
-void HeartBeat() {
-  int16 listen_port = 5001;
-  std::unique_ptr<Communicator> hsender, hreceiver;
-
-
-  hsender.reset(new ZmqCommunicator());
-  if (hsender.get() == NULL) {
-    cout << "Initialize hsender failed." << endl;
-    return;
-  }
-  hsender->Initialize(64/* ring_size */, true, 1024/* listen_port */);
-
-  hreceiver.reset(new ZmqCommunicator());
-  if (hreceiver.get() == NULL) {
-    cout << "Initialize hreceiver failed." << endl;
-    return;
-  }
-  hreceiver->Initialize(64/* ring_size */, false, listen_port);
-
-  Message msg;
-  Message_HeartbeatMessage* hb_msg = new Message_HeartbeatMessage();
-  std::string send_str, recv_str;
-
-  hb_msg->set_is_live(true);
-  msg.set_message_type(Message_MessageType_heartbeat);
-  msg.set_recv_id(1);
-  msg.set_send_id(0);
-
-  msg.set_allocated_heartbeat_msg(hb_msg);
-  msg.SerializeToString(&send_str);
-  hsender->AddIdAddr(1, agent_heartbeat_addr);
-
-  while (1) {
-    sleep(1);
-    if (hreceiver->Receive(&recv_str) == -1) {
-      cout << "Error in receiving heartbeat from agent" << endl;
-    }
-    cout << "Received heartbeat from agent" << endl;
-
-    msg.ParseFromString(recv_str);
-    if (msg.message_type() != Message_MessageType_heartbeat) {
-      cout << "Receive an unknown type of message" << endl;
-    }
-    if (!msg.has_heartbeat_msg()) {
-      cout << "There is no heartbeat_msg in msg" << endl;
-    }
-    else if (!msg.heartbeat_msg().is_live()) {
-      cout << "The heartbeat_msg is not live" << endl;
-    }
-
-    if (hsender->Send(1, send_str) == -1) {
-      cout << "Cannot send a heartbeat to agent" << endl;
-    }
-    cout << "Sent heartbeat to agent" << endl;
-
-  }
-}
 // In the future test, the port and key_value will be the parameters of Serve.
 // So I can emit the function Serve3().
 void Serve() {
@@ -401,10 +345,6 @@ int main(int argc, char* argv[]) {
     }
     if (type == "worker") {
       Work();
-      return 0;
-    }
-    if (type == "heartbeat") {
-      HeartBeat();
       return 0;
     }
     cout << "Unknown type" << endl;

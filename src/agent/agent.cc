@@ -482,40 +482,32 @@ void* Agent::HeartBeat(void* arg) {
   }
   hreceiver->Initialize(64/* ring_size */, false, agent->listen_port_ + 1);
 
-  Message msg;
+  Message send_msg, recv_msg;
   Message_HeartbeatMessage* hb_msg = new Message_HeartbeatMessage();
   std::string send_str, recv_str;
 
   hb_msg->set_is_live(true);
-  msg.set_message_type(Message_MessageType_heartbeat);
-  msg.set_recv_id(0);
-  msg.set_send_id(agent->local_id_);
-
-  msg.set_allocated_heartbeat_msg(hb_msg);
-  msg.SerializeToString(&send_str);
+  send_msg.set_message_type(Message_MessageType_heartbeat);
+  send_msg.set_send_id(agent->local_id_);
 
   while (1) {
     sleep(1);
+    if (hreceiver->Receive(&recv_str) == -1) {
+      cout << "Error in receiving heartbeat from master" << endl;
+    }
+    recv_msg.ParseFromString(recv_str);
+    cout << "Received heartbeat from master" << endl;
+    cout << "Master send_id is " << recv_msg.send_id() << endl;
+
+    // Config the send_msg
+    send_msg.set_recv_id(recv_msg.send_id());
+    send_msg.set_allocated_heartbeat_msg(hb_msg);
+    send_msg.SerializeToString(&send_str);
+
     if (agent->sender_->Send(0, send_str) == -1) {
       cout << "Cannot send a heartbeat to master" << endl;
     }
     cout << "Sent heartbeat to master" << endl;
-
-    if (hreceiver->Receive(&recv_str) == -1) {
-      cout << "Error in receiving heartbeat from master" << endl;
-    }
-    cout << "Received heartbeat from master" << endl;
-
-    msg.ParseFromString(recv_str);
-    if (msg.message_type() != Message_MessageType_heartbeat) {
-      cout << "Receive an unknown type of message" << endl;
-    }
-    if (!msg.has_heartbeat_msg()) {
-      cout << "There is no heartbeat_msg in msg" << endl;
-    }
-    else if (!msg.heartbeat_msg().is_live()) {
-      cout << "The heartbeat_msg is not live" << endl;
-    }
   }
 }
 
