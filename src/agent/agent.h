@@ -57,6 +57,7 @@ class Agent {
   int32 agent_num_;
   int32 server_num_;
   int32 key_range_;
+  int32 epoch_num_;
   std::vector<int32> server_id_list_;
 
   // Sender and Receiver for agent.

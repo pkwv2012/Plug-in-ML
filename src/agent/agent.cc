@@ -98,8 +98,7 @@ bool Agent::Initialize(std::string para_fifo_name,
   
   msg_send.set_allocated_register_msg(reg_msg_ptr);
   msg_send.SerializeToString(&reg_str);
-  cout << "3_1 Sending register string to master" << endl;
-  // TODO: Parse the master_addr
+  cout << "3_1 Sending register message to master" << endl;
   sender_->AddIdAddr(0, master_addr);
   if (sender_->Send(0, reg_str) == -1) {
     LOG(INFO) << "Cannot send register message to master" << endl;
@@ -173,6 +172,10 @@ bool Agent::Initialize(std::string para_fifo_name,
   grad_fifo_.Initialize(grad_fifo_name_, true);
   para_memory_.Initialize(para_memory_name_.c_str());
   grad_memory_.Initialize(grad_memory_name_.c_str());
+
+  // 5.Set the epoch_num_ to 0
+  epoch_num_ = 0;
+
   LOG(INFO) << "Agent's initialization is done" << endl;
 
   return true;
@@ -242,6 +245,7 @@ bool Agent::AgentWork() {
       cout << endl;
       cout << "Agent: Try to Push" << endl;
       Push();
+      epoch_num_++;
     } else {
     // case 2: Terminate request from worker
       cout << "Agent: Terminate" << endl;
@@ -387,7 +391,7 @@ bool Agent::Pull() {
 
   // Receive parameters from servers
   // PS: Maybe I will add a timer for this loop. Beacuse I want to avoid
-  // infinite loop caused by carshed server or servers.
+  // infinite loop caused by crashed server or servers.
 
   int32 cur = 0;
   parameters_.size = 0;
@@ -491,7 +495,6 @@ void* Agent::HeartBeat(void* arg) {
   send_msg.set_send_id(agent->local_id_);
 
   while (1) {
-    sleep(1);
     if (hreceiver->Receive(&recv_str) == -1) {
       cout << "Error in receiving heartbeat from master" << endl;
     }
@@ -500,6 +503,7 @@ void* Agent::HeartBeat(void* arg) {
     cout << "Master send_id is " << recv_msg.send_id() << endl;
 
     // Config the send_msg
+    hb_msg->set_
     send_msg.set_recv_id(recv_msg.send_id());
     send_msg.set_allocated_heartbeat_msg(hb_msg);
     send_msg.SerializeToString(&send_str);
@@ -509,6 +513,8 @@ void* Agent::HeartBeat(void* arg) {
     }
     cout << "Sent heartbeat to master" << endl;
   }
+
+  return nullptr;
 }
 
 }  // namespace rpscc
