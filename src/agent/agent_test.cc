@@ -15,7 +15,6 @@ using namespace std;
 
 // In this test, the <id>:<ip>:<port> list is as follows:
 // Master 0 : 127.0.0.1       : 5000
-// HeartBeat 0 : 127.0.0.1    : 5001
 // Agent  1 : 127.0.0.1       : 5555
 // Server 2 : 127.0.0.1       : 5005
 // Server 3 : 129.0.0.1       : 5006
@@ -97,52 +96,45 @@ void Mast() {
     sender.Send(1, config_str);
     break;
   }
+
+  Message msg;
+  Message_HeartbeatMessage* hb_msg = new Message_HeartbeatMessage();
+  std::string send_str, recv_str;
+  msg.set_message_type(Message_MessageType_heartbeat);
+  msg.set_recv_id(1);
+  msg.set_send_id(0);
+  hb_msg->set_is_live(true);
+  msg.set_allocated_heartbeat_msg(hb_msg);
+  msg.SerializeToString(&send_str);
+  sender.AddIdAddr(2, "127.0.0.1:5556");
+
+  string input;
+
   while (true) {
-    cout << "Master: Wait for agent's terminate request" << endl;
-    Message msg;
-    Message_HeartbeatMessage* hb_msg = new Message_HeartbeatMessage();
-    std::string send_str, recv_str;
+    cin >> input;
 
-    hb_msg->set_is_live(true);
-    msg.set_message_type(Message_MessageType_heartbeat);
-    msg.set_recv_id(1);
-    msg.set_send_id(0);
-
-    msg.set_allocated_heartbeat_msg(hb_msg);
-    msg.SerializeToString(&send_str);
-
-    sender.AddIdAddr(2, "127.0.0.1:5556");
-
-    while (1) {
-      sleep(1);
-
-      if (sender.Send(2, send_str) == -1) {
-        cout << "Cannot send a heartbeat to agent" << endl;
-      }
-      cout << "Sent heartbeat to agent" << endl;
-
-      if (receiver.Receive(&recv_str) == -1) {
-        cout << "Error in receiving heartbeat from agent" << endl;
-      }
-      cout << "Received heartbeat from agent" << endl;
-
-      msg.ParseFromString(recv_str);
-      if (msg.message_type() != Message_MessageType_heartbeat) {
-        cout << "Receive an unknown type of message" << endl;
-      }
-      if (!msg.has_heartbeat_msg()) {
-        cout << "There is no heartbeat_msg in msg" << endl;
-      }
-      else if (!msg.heartbeat_msg().is_live()) {
-        cout << "The heartbeat_msg is not live" << endl;
-      }
-      break;
+    cout << "Master: Wait for agent's heartbeat request" << endl;
+    if (sender.Send(2, send_str) == -1) {
+      cout << "Cannot send a heartbeat to agent" << endl;
     }
-    /*
-    receiver.Receive(&reg_str);
-    msg_recv.ParseFromString(reg_str);
-    cout << "Master: Receive " << msg_recv.DebugString() << endl;
-     */
+    cout << "Sent heartbeat to agent" << endl;
+
+    if (receiver.Receive(&recv_str) == -1) {
+      cout << "Error in receiving heartbeat from agent" << endl;
+    }
+    cout << "Received heartbeat from agent" << endl;
+
+    msg.ParseFromString(recv_str);
+    if (msg.message_type() != Message_MessageType_heartbeat) {
+      cout << "Receive an unknown type of message" << endl;
+    }
+    if (!msg.has_heartbeat_msg()) {
+      cout << "There is no heartbeat_msg in msg" << endl;
+    }
+    else if (!msg.heartbeat_msg().is_live()) {
+      cout << "The heartbeat_msg is not live" << endl;
+    }
+    cout << "agent_epoch_num = " << msg.heartbeat_msg().agent_epoch_num() << endl;
   }
 }
 
@@ -349,33 +341,5 @@ int main(int argc, char* argv[]) {
     }
     cout << "Unknown type" << endl;
   }
-
-  /*
-  // Test initialization
-  int pid = fork();
-  if (pid == 0) {
-    Init();
-    return 0;
-  }
-  int ppid = fork();
-  if (ppid == 0) {
-    Mast();
-    return 0;
-  }
-  
-  // Test AgentWork
-  int pppid = fork();
-  if (pppid == 0) {
-    sleep(2);
-    int ppppid = fork();
-    if (ppppid == 0)
-      Serve();
-    else
-      Serve3();
-    return 0;
-  }
-  Work();
-  */
-
   return 0;
 }

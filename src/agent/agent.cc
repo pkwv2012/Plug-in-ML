@@ -176,6 +176,9 @@ bool Agent::Initialize(std::string para_fifo_name,
   // 5.Set the epoch_num_ to 0
   epoch_num_ = 0;
 
+  // 6.Set the reconfig_msg_ to NULL
+  reconfig_msg_ = NULL;
+
   LOG(INFO) << "Agent's initialization is done" << endl;
 
   return true;
@@ -263,6 +266,16 @@ bool Agent::AgentWork() {
       cout << "Agent terminates its work" << endl;
       break;
     }
+    // After each loop, the agent's main thread will check the reconfig_flag_
+    // Lock the config_mutex_ first
+    reconfig_mutex_.lock();
+
+    // Check the reconfig_flag_
+    if (reconfig_msg_ != NULL) {
+      Reconfigurate();
+    }
+    // Unlock the config_mutex_
+    reconfig_mutex_.unlock();
   }
   return true;
 }
@@ -502,8 +515,16 @@ void* Agent::HeartBeat(void* arg) {
     cout << "Received heartbeat from master" << endl;
     cout << "Master send_id is " << recv_msg.send_id() << endl;
 
+    // Check if there is a config message in the heartbeat
+    if (recv_msg.has_config_msg()) {
+      cout << "Receive a reconfig message from master" << endl;
+      agent->reconfig_mutex_.lock();
+      agent->reconfig_msg_ = new Message(recv_msg);
+      agent->reconfig_mutex_.unlock();
+    }
+
     // Config the send_msg
-    hb_msg->set_
+    hb_msg->set_agent_epoch_num(agent->epoch_num_);
     send_msg.set_recv_id(recv_msg.send_id());
     send_msg.set_allocated_heartbeat_msg(hb_msg);
     send_msg.SerializeToString(&send_str);
@@ -515,6 +536,50 @@ void* Agent::HeartBeat(void* arg) {
   }
 
   return nullptr;
+}
+
+void Agent::Reconfigurate() {
+  // 1.Reinitialization of agent field
+  local_id_ = reconfig_msg_->recv_id();
+  Message_ConfigMessage config_msg = reconfig_msg_->config_msg();
+  agent_num_ = config_msg.worker_num();
+  server_num_ = config_msg.server_num();
+  key_range_  = config_msg.key_range();
+
+  cout << "Reinitialization " << "local_id = " << local_id_
+       << " agent_num_ = " << agent_num_ << " server_num_ = "
+       << server_num_ << " key_range_ = " << key_range_ << endl;
+
+  // 2.Add <server_id, server_addr> pairs to the sender_'s <Id, Addr> map.
+  server_id_list_.clear();
+  for (int32 i = 0; i < server_num_; i++) {
+    int32 server_i_id = config_msg.server_id(i);
+    server_id_list_.push_back(server_i_id);
+    cout << "server_id = " << server_i_id;
+    std::string server_i_ip_port = config_msg.node_ip_port(server_i_id);
+
+    cout << " ip_port = " << server_i_ip_port
+         << endl;
+    if (!sender_->CheckIdAddr(server_i_id, server_i_ip_port)) {
+      sender_->DeleteId(server_i_id);
+      sender_->AddIdAddr(server_i_id, server_i_ip_port);
+    }
+  }
+
+  // 3.Reinitialize the partition_.
+  int32* part_vec = new int32[server_num_ + 1];
+  config_msg.mutable_partition()->ExtractSubrange(0, server_num_ + 1,
+                                                  part_vec);
+  partition_.Finalize();
+  partition_.Initialize(key_range_, server_num_, part_vec);
+  delete[] part_vec;
+
+  // 4.Set the epoch_num_ to 0
+  epoch_num_ = 0;
+
+  // 5.Set the reconfig_msg_ to NULL
+  delete reconfig_msg_;
+  reconfig_msg_ = NULL;
 }
 
 }  // namespace rpscc

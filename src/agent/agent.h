@@ -8,6 +8,7 @@
 
 #include <map>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 #include <utility>
@@ -16,7 +17,9 @@
 #include "src/channel/fifo.h"
 #include "src/channel/shared_memory.h"
 #include "src/communication/communicator.h"
+#include "src/message/message.pb.h"
 #include "src/util/common.h"
+
 
 namespace rpscc {
 
@@ -92,6 +95,12 @@ class Agent {
   // Thread for heartbeat
   pthread_t heartbeat_;
 
+  // Messages for reconfiguration
+  Message* reconfig_msg_;
+
+  // Mutex for reconfiguration
+  std::mutex reconfig_mutex_;
+
   bool AgentWork();
   bool Push();
   bool Pull();
@@ -101,6 +110,10 @@ class Agent {
 
   // To sort the key list and value list
   void SortKeyValue(int32* keys, float32* values, int32 size);
+
+  // Reconfigigurate the agent when the master send a ConfigMessage
+  // to agent not for the first time
+  void Reconfigurate();
 };
 
 }  // namespace rpscc
