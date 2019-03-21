@@ -743,12 +743,19 @@ class Message_HeartbeatMessage final :
   bool is_live() const;
   void set_is_live(bool value);
 
+  // int32 agent_epoch_num = 2;
+  void clear_agent_epoch_num();
+  static const int kAgentEpochNumFieldNumber = 2;
+  ::google::protobuf::int32 agent_epoch_num() const;
+  void set_agent_epoch_num(::google::protobuf::int32 value);
+
   // @@protoc_insertion_point(class_scope:rpscc.Message.HeartbeatMessage)
  private:
   class HasBitSetters;
 
   ::google::protobuf::internal::InternalMetadataWithArena _internal_metadata_;
   bool is_live_;
+  ::google::protobuf::int32 agent_epoch_num_;
   mutable ::google::protobuf::internal::CachedSize _cached_size_;
   friend struct ::TableStruct_message_2eproto;
 };
@@ -1390,6 +1397,20 @@ inline void Message_HeartbeatMessage::set_is_live(bool value) {
   
   is_live_ = value;
   // @@protoc_insertion_point(field_set:rpscc.Message.HeartbeatMessage.is_live)
+}
+
+// int32 agent_epoch_num = 2;
+inline void Message_HeartbeatMessage::clear_agent_epoch_num() {
+  agent_epoch_num_ = 0;
+}
+inline ::google::protobuf::int32 Message_HeartbeatMessage::agent_epoch_num() const {
+  // @@protoc_insertion_point(field_get:rpscc.Message.HeartbeatMessage.agent_epoch_num)
+  return agent_epoch_num_;
+}
+inline void Message_HeartbeatMessage::set_agent_epoch_num(::google::protobuf::int32 value) {
+  
+  agent_epoch_num_ = value;
+  // @@protoc_insertion_point(field_set:rpscc.Message.HeartbeatMessage.agent_epoch_num)
 }
 
 // -------------------------------------------------------------------

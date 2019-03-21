@@ -165,6 +165,7 @@ const ::google::protobuf::uint32 TableStruct_message_2eproto::offsets[] PROTOBUF
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
   PROTOBUF_FIELD_OFFSET(::rpscc::Message_HeartbeatMessage, is_live_),
+  PROTOBUF_FIELD_OFFSET(::rpscc::Message_HeartbeatMessage, agent_epoch_num_),
   ~0u,  // no _has_bits_
   PROTOBUF_FIELD_OFFSET(::rpscc::Message, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -183,7 +184,7 @@ static const ::google::protobuf::internal::MigrationSchema schemas[] PROTOBUF_SE
   { 8, -1, sizeof(::rpscc::Message_ConfigMessage)},
   { 22, -1, sizeof(::rpscc::Message_RegisterMessage)},
   { 30, -1, sizeof(::rpscc::Message_HeartbeatMessage)},
-  { 36, -1, sizeof(::rpscc::Message)},
+  { 37, -1, sizeof(::rpscc::Message)},
 };
 
 static ::google::protobuf::Message const * const file_default_instances[] = {
@@ -201,7 +202,7 @@ static ::google::protobuf::Message const * const file_default_instances[] = {
 };
 
 const char descriptor_table_protodef_message_2eproto[] =
-  "\n\rmessage.proto\022\005rpscc\"\325\006\n\007Message\022\017\n\007se"
+  "\n\rmessage.proto\022\005rpscc\"\356\006\n\007Message\022\017\n\007se"
   "nd_id\030\001 \001(\005\022\017\n\007recv_id\030\002 \001(\005\0220\n\014message_"
   "type\030\003 \001(\0162\032.rpscc.Message.MessageType\0220"
   "\n\nconfig_msg\030\004 \001(\0132\034.rpscc.Message.Confi"
@@ -219,16 +220,16 @@ const char descriptor_table_protodef_message_2eproto[] =
   "(\t\022\021\n\tpartition\030\005 \003(\005\022\021\n\tserver_id\030\006 \003(\005"
   "\022\021\n\tworker_id\030\010 \003(\005\022\021\n\tmaster_id\030\t \003(\005\022\r"
   "\n\005bound\030\007 \001(\005\032>\n\017RegisterMessage\022\n\n\002ip\030\001"
-  " \001(\t\022\014\n\004port\030\002 \001(\005\022\021\n\tis_server\030\003 \001(\010\032#\n"
-  "\020HeartbeatMessage\022\017\n\007is_live\030\001 \001(\010\"R\n\013Me"
-  "ssageType\022\n\n\006config\020\000\022\013\n\007request\020\001\022\r\n\the"
-  "artbeat\020\002\022\014\n\010register\020\003\022\r\n\tterminate\020\004b\006"
-  "proto3"
+  " \001(\t\022\014\n\004port\030\002 \001(\005\022\021\n\tis_server\030\003 \001(\010\032<\n"
+  "\020HeartbeatMessage\022\017\n\007is_live\030\001 \001(\010\022\027\n\017ag"
+  "ent_epoch_num\030\002 \001(\005\"R\n\013MessageType\022\n\n\006co"
+  "nfig\020\000\022\013\n\007request\020\001\022\r\n\theartbeat\020\002\022\014\n\010re"
+  "gister\020\003\022\r\n\tterminate\020\004b\006proto3"
   ;
 ::google::protobuf::internal::DescriptorTable descriptor_table_message_2eproto = {
   false, InitDefaults_message_2eproto, 
   descriptor_table_protodef_message_2eproto,
-  "message.proto", &assign_descriptors_table_message_2eproto, 886,
+  "message.proto", &assign_descriptors_table_message_2eproto, 911,
 };
 
 void AddDescriptors_message_2eproto() {
@@ -1905,6 +1906,7 @@ class Message_HeartbeatMessage::HasBitSetters {
 
 #if !defined(_MSC_VER) || _MSC_VER >= 1900
 const int Message_HeartbeatMessage::kIsLiveFieldNumber;
+const int Message_HeartbeatMessage::kAgentEpochNumFieldNumber;
 #endif  // !defined(_MSC_VER) || _MSC_VER >= 1900
 
 Message_HeartbeatMessage::Message_HeartbeatMessage()
@@ -1916,12 +1918,16 @@ Message_HeartbeatMessage::Message_HeartbeatMessage(const Message_HeartbeatMessag
   : ::google::protobuf::Message(),
       _internal_metadata_(nullptr) {
   _internal_metadata_.MergeFrom(from._internal_metadata_);
-  is_live_ = from.is_live_;
+  ::memcpy(&is_live_, &from.is_live_,
+    static_cast<size_t>(reinterpret_cast<char*>(&agent_epoch_num_) -
+    reinterpret_cast<char*>(&is_live_)) + sizeof(agent_epoch_num_));
   // @@protoc_insertion_point(copy_constructor:rpscc.Message.HeartbeatMessage)
 }
 
 void Message_HeartbeatMessage::SharedCtor() {
-  is_live_ = false;
+  ::memset(&is_live_, 0, static_cast<size_t>(
+      reinterpret_cast<char*>(&agent_epoch_num_) -
+      reinterpret_cast<char*>(&is_live_)) + sizeof(agent_epoch_num_));
 }
 
 Message_HeartbeatMessage::~Message_HeartbeatMessage() {
@@ -1947,7 +1953,9 @@ void Message_HeartbeatMessage::Clear() {
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  is_live_ = false;
+  ::memset(&is_live_, 0, static_cast<size_t>(
+      reinterpret_cast<char*>(&agent_epoch_num_) -
+      reinterpret_cast<char*>(&is_live_)) + sizeof(agent_epoch_num_));
   _internal_metadata_.Clear();
 }
 
@@ -1968,6 +1976,13 @@ const char* Message_HeartbeatMessage::_InternalParse(const char* begin, const ch
       case 1: {
         if (static_cast<::google::protobuf::uint8>(tag) != 8) goto handle_unusual;
         msg->set_is_live(::google::protobuf::internal::ReadVarint(&ptr));
+        GOOGLE_PROTOBUF_PARSER_ASSERT(ptr);
+        break;
+      }
+      // int32 agent_epoch_num = 2;
+      case 2: {
+        if (static_cast<::google::protobuf::uint8>(tag) != 16) goto handle_unusual;
+        msg->set_agent_epoch_num(::google::protobuf::internal::ReadVarint(&ptr));
         GOOGLE_PROTOBUF_PARSER_ASSERT(ptr);
         break;
       }
@@ -2011,6 +2026,19 @@ bool Message_HeartbeatMessage::MergePartialFromCodedStream(
         break;
       }
 
+      // int32 agent_epoch_num = 2;
+      case 2: {
+        if (static_cast< ::google::protobuf::uint8>(tag) == (16 & 0xFF)) {
+
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::int32, ::google::protobuf::internal::WireFormatLite::TYPE_INT32>(
+                 input, &agent_epoch_num_)));
+        } else {
+          goto handle_unusual;
+        }
+        break;
+      }
+
       default: {
       handle_unusual:
         if (tag == 0) {
@@ -2043,6 +2071,11 @@ void Message_HeartbeatMessage::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteBool(1, this->is_live(), output);
   }
 
+  // int32 agent_epoch_num = 2;
+  if (this->agent_epoch_num() != 0) {
+    ::google::protobuf::internal::WireFormatLite::WriteInt32(2, this->agent_epoch_num(), output);
+  }
+
   if (_internal_metadata_.have_unknown_fields()) {
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         _internal_metadata_.unknown_fields(), output);
@@ -2059,6 +2092,11 @@ void Message_HeartbeatMessage::SerializeWithCachedSizes(
   // bool is_live = 1;
   if (this->is_live() != 0) {
     target = ::google::protobuf::internal::WireFormatLite::WriteBoolToArray(1, this->is_live(), target);
+  }
+
+  // int32 agent_epoch_num = 2;
+  if (this->agent_epoch_num() != 0) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteInt32ToArray(2, this->agent_epoch_num(), target);
   }
 
   if (_internal_metadata_.have_unknown_fields()) {
@@ -2085,6 +2123,13 @@ size_t Message_HeartbeatMessage::ByteSizeLong() const {
   // bool is_live = 1;
   if (this->is_live() != 0) {
     total_size += 1 + 1;
+  }
+
+  // int32 agent_epoch_num = 2;
+  if (this->agent_epoch_num() != 0) {
+    total_size += 1 +
+      ::google::protobuf::internal::WireFormatLite::Int32Size(
+        this->agent_epoch_num());
   }
 
   int cached_size = ::google::protobuf::internal::ToCachedSize(total_size);
@@ -2117,6 +2162,9 @@ void Message_HeartbeatMessage::MergeFrom(const Message_HeartbeatMessage& from) {
   if (from.is_live() != 0) {
     set_is_live(from.is_live());
   }
+  if (from.agent_epoch_num() != 0) {
+    set_agent_epoch_num(from.agent_epoch_num());
+  }
 }
 
 void Message_HeartbeatMessage::CopyFrom(const ::google::protobuf::Message& from) {
@@ -2145,6 +2193,7 @@ void Message_HeartbeatMessage::InternalSwap(Message_HeartbeatMessage* other) {
   using std::swap;
   _internal_metadata_.Swap(&other->_internal_metadata_);
   swap(is_live_, other->is_live_);
+  swap(agent_epoch_num_, other->agent_epoch_num_);
 }
 
 ::google::protobuf::Metadata Message_HeartbeatMessage::GetMetadata() const {
