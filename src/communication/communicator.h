@@ -45,6 +45,8 @@ class Communicator {
   virtual bool AddIdAddr(int32 id, std::string addr) = 0;
   // Delete an <id, addr> from id_to_addr_
   virtual bool DeleteId(int32 id) = 0;
+  // Check if there is a pair like <id, addr> in the map
+  virtual bool CheckIdAddr(int32 id, std::string addr) = 0;
 };
 
 }  // namespace rpscc

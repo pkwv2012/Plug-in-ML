@@ -52,6 +52,8 @@ class ZmqCommunicator : public Communicator {
   bool AddIdAddr(int32 id, std::string addr);
   // Delete an <id, addr> from id_to_addr_
   bool DeleteId(int32 id);
+  // Check if there is a pair like <id, addr> in the map
+  bool CheckIdAddr(int32 id, std::string addr);
 
  private:
   // Max size of a buffer block

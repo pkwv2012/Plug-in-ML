@@ -74,6 +74,20 @@ int32 ZmqSendRecv::Receive(char* message, const int32 max_size) {
   return msg_size;
 }
 
+int32 ZmqSendRecv::CloseSocket(std::string dst_addr) {
+  int32 res = 0;
+  std::map<std::string, void*>::iterator iter = mapper_.find(dst_addr);
+  if (iter == mapper_.end()) {
+    printf("Close a nonexistent socket\n");
+    res = -1;
+  } else {
+    printf("Try to close socket\n");
+    res = zmq_close(iter->second);
+    mapper_.erase(dst_addr);
+  }
+  return res;
+}
+
 }  // namespace rpscc
 
 

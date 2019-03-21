@@ -119,13 +119,23 @@ bool ZmqCommunicator::AddIdAddr(int32 id, std::string addr) {
 }
 
 bool ZmqCommunicator::DeleteId(int32 id) {
+  bool res = true;
   if (id_to_addr_.find(id) != id_to_addr_.end()) {
     printf("DeleteId: %d\n", id);
+    res = send_recv_.CloseSocket(id_to_addr_[id]) == 0;
     id_to_addr_.erase(id);
-    return true;
   } else {
     printf("This id doesn't exist in the id_to_addr_\n");
+    res = false;
+  }
+  return res;
+}
+
+bool ZmqCommunicator::CheckIdAddr(int32 id, std::string addr) {
+  if (id_to_addr_.find(id) == id_to_addr_.end()) {
     return false;
+  } else {
+    return id_to_addr_[id] == addr;
   }
 }
 

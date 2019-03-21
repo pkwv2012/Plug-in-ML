@@ -37,11 +37,15 @@ class ZmqSendRecv {
   // Send data using zmq
   // Parameter: dst_addr is in the form of <ip>:<port>
   // Return : bytes send to remote
-  int Send(std::string dst_addr, const char* const message, int len);
+  int32 Send(std::string dst_addr, const char* const message, int len);
 
   // Receive data using zmq
   // Return : bytes received
-  int Receive(char* message, const int max_size);
+  int32 Receive(char* message, const int max_size);
+
+  // Close conncetion
+  // Return: 0 if it is closed successfully, -1 else
+  int32 CloseSocket(std::string dst_addr);
 
  private:
   bool is_sender_;
