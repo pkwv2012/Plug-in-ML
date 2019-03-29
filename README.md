@@ -14,6 +14,15 @@ cmake ..
 make
 ```
 
+## Usage
+
+```sh
+./server_main --master_ip_port=162.105.146.128:16666 --server_port=17777
+./agent_main --net_interface=eno1 --listen_port=15555 --master_ip_port=162.105.146.128:16666
+python Linear_Regression.py
+./master_main --worker_num=1 --server_num=1 --listen_port=16666 --master_ip_port=162.105.146.128:16666 --key_range=100 --bound=1
+```
+
 This scripts will automatically generate protobuf files.
 
 ## TODO List
