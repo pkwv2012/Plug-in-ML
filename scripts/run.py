@@ -12,9 +12,20 @@ def run(prog):
     subprocess.check_call(prog, shell=True)
 
 if __name__ == '__main__':
+
     prefix = 'ssh -o StrictHostKeyChecking=no '
 
     node_list = ['162.105.146.128', 'ip6-server14']
+
+    for node in node_list:
+        print('clearing node: ' + node)
+        prog = 'python3 kill_all.py'
+        prog = prefix + 'zhengpeikai@' + node + ' \'' + prog + '\''
+        prog_thread = Thread(target=run, args=(prog, ))
+        prog_thread.deamon = True
+        prog_thread.start()
+
+    time.sleep(5)
 
     master_prog = ' cd rpscc_deploy/build/src/master; ./master_main --worker_num=2 --server_num=1 --listen_port=16666 --master_ip_port=162.105.146.128:16666 --key_range=100 --bound=1'
     master_prog = prefix + 'zhengpeikai@162.105.146.128' + ' \'' + master_prog + '\''
@@ -29,6 +40,8 @@ if __name__ == '__main__':
     server_thread = Thread(target=run, args=(server_prog, ))
     server_thread.deamon = True
     server_thread.start()
+
+    time.sleep(5)
 
     agent_list = ['162.105.146.128', 'ip6-server14']
     net_interface = ['eno1', 'eno2']
