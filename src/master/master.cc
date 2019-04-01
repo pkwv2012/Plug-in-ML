@@ -77,18 +77,18 @@ void Master::MainLoop() {
                 ip + ":" + std::to_string(std::stoi(port) + 1));
           }
           DeliverConfig();
+          //std::thread heartbeat_thread(
+          //  std::bind(&Master::DeliverHeartbeatLoop, this));
+          //time_t cur_time = time(NULL);
+          //for (int i = 0; i < config_.get_node_ip().size(); ++i) {
+          //  alive_node_[i] = cur_time;
+          //}
         }
         LOG(INFO) << "worker_num=" << config_.worker_num()
                   << "server_num=" << config_.server_num()
                   << "worker_cur_num=" << config_.agent_id().size()
                   << "server_cur_num=" << config_.server_id().size()
                   << std::endl;
-        std::thread heartbeat_thread(
-            std::bind(&Master::DeliverHeartbeatLoop, this));
-        time_t cur_time = time(NULL);
-        for (int i = 0; i < config_.get_node_ip().size(); ++i) {
-          alive_node_[i] = cur_time;
-        }
 
         break;
       }

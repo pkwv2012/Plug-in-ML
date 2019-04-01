@@ -19,7 +19,7 @@ if __name__ == '__main__':
 
     for node in node_list:
         print('clearing node: ' + node)
-        prog = 'python3 kill_all.py'
+        prog = 'cd rpscc_deploy/scripts/; python3 kill_all.py'
         prog = prefix + 'zhengpeikai@' + node + ' \'' + prog + '\''
         prog_thread = Thread(target=run, args=(prog, ))
         prog_thread.deamon = True
