@@ -113,8 +113,9 @@ if __name__ == '__main__':
     eval_file = '{}.eval'.format(data_path)
     num_features = None
     num_iter = 50
-    batch_size = 400000
-    learning_rate = 0.0000001
+    num_worker = 1 if alone else 2
+    batch_size = int(400000 / num_worker)
+    learning_rate = 0.00000005
 
     if not alone:
         read_fd = os.open('/dev/shm/test_sharedMemory_sample1', os.O_RDWR | os.O_SYNC | os.O_CREAT)
@@ -163,6 +164,7 @@ if __name__ == '__main__':
         else:
             transfer_to_agent(-learning_rate*grad, keys, w)
             os.write(write_fifo, struct.pack('i', 1))
+            weights -= learning_rate * grad
         absolute_error, squared_error = predict(eval_X, eval_y, weights)
         min_absolute_error = min(min_absolute_error, absolute_error)
         min_squared_error = min(min_squared_error, squared_error)

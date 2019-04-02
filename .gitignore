@@ -1,0 +1,3 @@
+# do not commit the generated protobuf files.
+*.pb.h
+*.pb.cc
