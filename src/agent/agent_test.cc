@@ -99,19 +99,91 @@ void Mast() {
 
   Message msg;
   Message_HeartbeatMessage* hb_msg = new Message_HeartbeatMessage();
-  std::string send_str, recv_str;
+  std::string send_str, recv_str, tmp_str;
   msg.set_message_type(Message_MessageType_heartbeat);
   msg.set_recv_id(1);
   msg.set_send_id(0);
   hb_msg->set_is_live(true);
   msg.set_allocated_heartbeat_msg(hb_msg);
-  msg.SerializeToString(&send_str);
+  msg.SerializeToString(&tmp_str);
   sender.AddIdAddr(2, "127.0.0.1:5556");
 
   string input;
 
   while (true) {
     cin >> input;
+
+    send_str = tmp_str;
+
+    if (input == "reconfig1") {
+      cout << "You send a reconfiguration message 1 to agent" << endl;
+      config_msg = new Message_ConfigMessage();
+
+      config_msg->set_worker_num(1);
+      config_msg->set_server_num(2);
+      config_msg->set_key_range(5);
+
+      config_msg->add_node_ip_port("127.0.0.1:5000");
+      config_msg->add_node_ip_port("127.0.0.1:5555");
+      config_msg->add_node_ip_port("127.0.0.1:5005");
+      config_msg->add_node_ip_port("127.0.0.1:5006");
+
+      config_msg->add_partition(0);
+      config_msg->add_partition(3);
+      config_msg->add_partition(5);
+
+      config_msg->add_server_id(2);
+      config_msg->add_server_id(3);
+      config_msg->add_worker_id(1);
+      config_msg->add_master_id(0);
+      config_msg->set_bound(1);
+
+      msg_send.set_message_type(Message_MessageType_heartbeat);
+      msg_send.set_recv_id(1);
+      msg_send.set_send_id(0);
+      msg_send.set_allocated_config_msg(config_msg);
+
+      hb_msg = new Message_HeartbeatMessage();
+      hb_msg->set_is_live(true);
+      msg_send.set_allocated_heartbeat_msg(hb_msg);
+
+      msg_send.SerializeToString(&send_str);
+
+    } else if (input == "reconfig2") {
+      cout << "You send a reconfiguration message 2 to agent" << endl;
+
+      config_msg = new Message_ConfigMessage();
+
+      config_msg->set_worker_num(1);
+      config_msg->set_server_num(1);
+      config_msg->set_key_range(5);
+
+      config_msg->add_node_ip_port("127.0.0.1:5000");
+      config_msg->add_node_ip_port("127.0.0.1:5555");
+      config_msg->add_node_ip_port("127.0.0.1:5005");
+
+      config_msg->add_partition(0);
+      config_msg->add_partition(5);
+
+      config_msg->add_server_id(2);
+      config_msg->add_worker_id(1);
+      config_msg->add_master_id(0);
+      config_msg->set_bound(1);
+
+      msg_send.clear_config_msg();
+      msg_send.clear_heartbeat_msg();
+
+      msg_send.set_message_type(Message_MessageType_heartbeat);
+      msg_send.set_recv_id(1);
+      msg_send.set_send_id(0);
+      msg_send.set_allocated_config_msg(config_msg);
+
+      hb_msg = new Message_HeartbeatMessage();
+      hb_msg->set_is_live(true);
+      msg_send.set_allocated_heartbeat_msg(hb_msg);
+
+      msg_send.SerializeToString(&send_str);
+    }
 
     cout << "Master: Wait for agent's heartbeat request" << endl;
     if (sender.Send(2, send_str) == -1) {
@@ -243,7 +315,6 @@ void Serve3() {
 }
 
 void Work() {
-  sleep(5);
   cout << "Worker: Start" << endl;
   std::string str;
   Fifo para_fifo, grad_fifo;

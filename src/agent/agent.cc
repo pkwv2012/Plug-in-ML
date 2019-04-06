@@ -212,7 +212,18 @@ bool Agent::AgentWork() {
     // Wait for worker's signal
     cout << "Agent: Wait for worker's signal" << endl;
     signal_type = grad_fifo_.Wait();
-    
+
+    // In the beginning of every loop, the agent's main thread will check the reconfig_flag_
+    // Lock the config_mutex_ first
+    reconfig_mutex_.lock();
+
+    // Check the reconfig_flag_
+    if (reconfig_msg_ != NULL) {
+      Reconfigurate();
+    }
+    // Unlock the config_mutex_
+    reconfig_mutex_.unlock();
+
     // case 0: Pull request from worker
     if (signal_type == 0) {
       cout << "Agent: Receive pull request from worker" << endl;
@@ -266,16 +277,6 @@ bool Agent::AgentWork() {
       cout << "Agent terminates its work" << endl;
       break;
     }
-    // After each loop, the agent's main thread will check the reconfig_flag_
-    // Lock the config_mutex_ first
-    reconfig_mutex_.lock();
-
-    // Check the reconfig_flag_
-    if (reconfig_msg_ != NULL) {
-      Reconfigurate();
-    }
-    // Unlock the config_mutex_
-    reconfig_mutex_.unlock();
   }
   return true;
 }
@@ -504,8 +505,11 @@ void* Agent::HeartBeat(void* arg) {
   std::string send_str, recv_str;
 
   hb_msg->set_is_live(true);
+  hb_msg->set_agent_epoch_num(agent->epoch_num_);
+
   send_msg.set_message_type(Message_MessageType_heartbeat);
   send_msg.set_send_id(agent->local_id_);
+  send_msg.set_allocated_heartbeat_msg(hb_msg);
 
   while (1) {
     if (hreceiver->Receive(&recv_str) == -1) {
@@ -521,11 +525,18 @@ void* Agent::HeartBeat(void* arg) {
       agent->reconfig_mutex_.lock();
       agent->reconfig_msg_ = new Message(recv_msg);
       agent->reconfig_mutex_.unlock();
+//      {
+//        lock_guard<mutex> guard(reconfig_mutex_);
+//        agent->reconfig_msg_ = new Message(recv_msg);
+//      }
     }
 
     // Config the send_msg
-    hb_msg->set_agent_epoch_num(agent->epoch_num_);
+
     send_msg.set_recv_id(recv_msg.send_id());
+    hb_msg = new Message_HeartbeatMessage();
+    hb_msg->set_is_live(true);
+    hb_msg->set_agent_epoch_num(agent->epoch_num_);
     send_msg.set_allocated_heartbeat_msg(hb_msg);
     send_msg.SerializeToString(&send_str);
 
