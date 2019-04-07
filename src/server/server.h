@@ -41,6 +41,7 @@ class Server {
   std::unique_ptr<Communicator> receiver_heatbeat_;
 
   std::string local_address_;
+  uint32 local_index_;
   uint32 local_id_;
   uint32 start_key_;
   uint32 parameter_length_;
@@ -48,11 +49,14 @@ class Server {
   uint32 bottom_version_;
   uint32 agent_num_;
   uint32 server_num_;
+  uint32 backup_size_;
 
   std::vector<uint32> master_ids_;
   std::vector<uint32> server_ids_;
+  std::unordered_map<uint32, uint32> servers_;
   __gnu_cxx::hash_set<uint32> agent_ids_;
   std::vector<float> parameters_;
+  std::vector<std::vector<float>> backup_parameters_;
   std::vector<std::queue<KeyValueList> > version_buffer_;
   std::deque<uint32> finish_count_;
   std::queue<PullInfo> pull_request_;
@@ -67,6 +71,9 @@ class Server {
   void ServePush(uint32 sender_id, const Message_RequestMessage &request);
   static void* HeartBeat(void* arg);
   void Reconfigurate(const Message_ConfigMessage &config);
+  // UNKNOWN: Use a new thread or not?
+  void RequestBackup();
+  void RespondBackup(uint32 server_id);
 };
 
 }  // namespace rpscc
