@@ -8,6 +8,9 @@
 #include "src/util/logging.h"
 #include "src/util/network_util.h"
 
+using std::cout;
+using std::endl;
+
 namespace rpscc {
 
 DEFINE_string(net_interface, "",
@@ -68,10 +71,12 @@ bool Server::Initialize() {
     LOG(ERROR) << "Failed to send register information to master.";
     return false;
   }
+  cout << "Wait for master's response" << endl;
   if (receiver_->Receive(&config_str) == -1) {
     LOG(ERROR) << "Failed to receive configuration information from master.";
     return false;
   }
+  cout << "Get response from master" << endl;
   msg_recv.ParseFromString(config_str);
   config_msg = msg_recv.config_msg();
 
@@ -81,11 +86,14 @@ bool Server::Initialize() {
   consistency_bound_ = config_msg.bound();
   agent_num_ = config_msg.worker_num();
   server_num_ = config_msg.server_num();
+  cout << "bound = " << consistency_bound_ << ", agent_num_ = " << agent_num_
+       << ", server_num_ = " << server_num_ << endl;
 
   // Initialization of sender's id mapping to ip-ports, where the id 0 is
   // already added.
-  for (uint32 i = 1; i < config_msg.node_ip_port_size(); ++i) {
+  for (int32 i = 1; i < config_msg.node_ip_port_size(); ++i) {
     sender_->AddIdAddr(i, config_msg.node_ip_port(i));
+    cout << "AddIdAddr: " << i << " " << config_msg.node_ip_port(i) << endl;
   }
 
   // Chenbin: Initialization of backup_parameters_
@@ -100,10 +108,11 @@ bool Server::Initialize() {
   // Note that config_msg.partition should be a array of length #server + 1.
   // It's first element must be 0 and the last must be config_msg.key_range.
   bool found_local = false;
-  for (uint32 i = 0; i < server_num_; ++i) {
-    uint32 server_i_id = config_msg.server_id(i);
+  for (int32 i = 0; i < server_num_; ++i) {
+    int32 server_i_id = config_msg.server_id(i);
     server_ids_.push_back(server_i_id);
     servers_.insert({server_i_id, i});
+    cout << "Add server: " << server_i_id << " " << i << endl;
     if (server_i_id == local_id_) {
       local_index_ = i;
       start_key_ = config_msg.partition(i);
@@ -111,8 +120,8 @@ bool Server::Initialize() {
       found_local = true;
 
       // Chenbin: Initialize the backup_parameters_
-      for (uint32 j = 1; j <= backup_size_; j++) {
-        uint32 target = (i - j + server_num_) % server_num_;
+      for (int32 j = 1; j <= backup_size_; j++) {
+        int32 target = (i - j + server_num_) % server_num_;
         backup_parameters_.push_back(std::vector<float>(
           config_msg.partition(target + 1) - config_msg.partition(target)));
       }
@@ -125,30 +134,33 @@ bool Server::Initialize() {
   }
 
   // Initialize agent id set
-  for (uint32 i = 0; i < config_msg.worker_id_size(); ++i) {
+  for (int32 i = 0; i < config_msg.worker_id_size(); ++i) {
     agent_ids_.insert(config_msg.worker_id(i));
+    cout << "Add agent: " << config_msg.worker_id(i) << endl;
   }
 
   // Initialize master ids.
-  for (uint32 i = 0; i < config_msg.master_id_size(); ++i) {
+  for (int32 i = 0; i < config_msg.master_id_size(); ++i) {
     master_ids_.push_back(config_msg.master_id(i));
+    cout << "Add master: " << config_msg.master_id(i) << endl;
   }
 
   // Initialize map from worker ID to version buffer index
-  for (uint32 i = 0; i < agent_num_; ++i)
+  for (int32 i = 0; i < agent_num_; ++i) {
     id_to_index_[config_msg.worker_id(i)] = i;
+  }
 
   // By default, all parameters are initialized to be zero
-  for (uint32 i = 0; i < parameter_length_; ++i)
+  for (int32 i = 0; i < parameter_length_; ++i)
     parameters_.push_back(0.0f);
 
   // Initialize the deque finish_count to be zeros, it's length should be
   // equal to consistency bound. To maintain finish_count, It's length must
   // stay unchanged throughout the program.
-  for (uint32 i = 0; i < consistency_bound_; ++i)
+  for (int32 i = 0; i < consistency_bound_; ++i)
     finish_count_.push_back(0);
 
-  for (uint32 i = 0; i < agent_num_; ++i)
+  for (int32 i = 0; i < agent_num_; ++i)
     version_buffer_.push_back(std::queue<KeyValueList>());
 
   return true;
@@ -164,8 +176,8 @@ bool Server::RespondToAll() {
     Message* msg_send = new Message;
     Message_RequestMessage* reply_msg = new Message_RequestMessage;
     reply_msg->set_request_type(Message_RequestMessage_RequestType_key_value);
-    uint32 len = request.Length();
-    for (uint32 i = 0; i < len; ++i) {
+    int32 len = request.Length();
+    for (int32 i = 0; i < len; ++i) {
       reply_msg->add_keys(request.Key(i));
       reply_msg->add_values(parameters_[request.Key(i) - start_key_]);
     }
@@ -192,14 +204,14 @@ bool Server::RespondToAll() {
 // Simple implementation -- average.
 void Server::UpdateParameter() {
   std::vector<float> update(parameter_length_, 0.0f);
-  for (uint32 i = 0; i < agent_num_; ++i) {
+  for (int32 i = 0; i < agent_num_; ++i) {
     KeyValueList update_i = version_buffer_[i].front();
     version_buffer_[i].pop();
-    uint32 len = update_i.Length();
-    for (uint32 j = 0; j < len; ++j)
+    int32 len = update_i.Length();
+    for (int32 j = 0; j < len; ++j)
       update[update_i.Key(j) - start_key_] += update_i.Value(j);
   }
-  for (uint32 i = 0; i < parameter_length_; ++i) {
+  for (int32 i = 0; i < parameter_length_; ++i) {
     parameters_[i] += update[i] / agent_num_;
   }
   bottom_version_++;
@@ -217,7 +229,7 @@ void Server::Start() {
     receiver_->Receive(&recv_str);
     Message msg_recv;
     msg_recv.ParseFromString(recv_str);
-    uint32 sender_id = msg_recv.send_id();
+    int32 sender_id = msg_recv.send_id();
 
     // Chenbin: Is it a backup request from other servers?
     if (servers_.find(msg_recv.send_id()) != servers_.end()) {
@@ -252,7 +264,7 @@ void Server::Start() {
 // If a round of version update is finished after the push, UpdateParameter()
 // and RespondToAll() will be called to return the new version of parameters
 // to the blocked workers.
-void Server::ServePush(uint32 sender_id,
+void Server::ServePush(int32 sender_id,
   const Message_RequestMessage &request) {
   if (agent_ids_.find(sender_id) == agent_ids_.end()) {
     LOG(ERROR) << "Got push request from worker " << sender_id
@@ -262,10 +274,14 @@ void Server::ServePush(uint32 sender_id,
   // Chenbin: There may be a bug here, can bound errors be called here?
   finish_count_[version_buffer_[id_to_index_[sender_id]].size()]++;
   KeyValueList worker_update;
-  for (uint32 i = 0; i < request.keys_size(); ++i)
+  for (int32 i = 0; i < request.keys_size(); ++i)
     worker_update.AddPair(request.keys(i), request.values(i));
-  version_buffer_[id_to_index_[sender_id]].push(worker_update);
-
+  if (version_buffer_[id_to_index_[sender_id]].size() >= consistency_bound_) {
+    LOG(ERROR) << "Version_buffer_" << id_to_index_[sender_id]
+               << " overfilled";
+  } else {
+    version_buffer_[id_to_index_[sender_id]].push(worker_update);
+  }
   // Acknowledgement from server
   // Chenbin: I annotate these block of code because the agent does not handle the ack message.
 //  std::string send_str;
@@ -299,7 +315,7 @@ void Server::ServePush(uint32 sender_id,
 // updates that the worker has already committed but is not yet processed by
 // the server. If the number of updates in version_buffer is too large, the
 // pull request will be blocked.
-void Server::ServePull(uint32 sender_id,
+void Server::ServePull(int32 sender_id,
    const Message_RequestMessage &request) {
   if (id_to_index_.find(sender_id) == id_to_index_.end()) {
     LOG(ERROR) << "Got pull request from worker " << sender_id
@@ -312,7 +328,7 @@ void Server::ServePull(uint32 sender_id,
     >= consistency_bound_) {
     PullInfo blocked_request;
     blocked_request.set_id(sender_id);
-    for (uint32 i = 0; i < request.keys_size(); ++i)
+    for (int32 i = 0; i < request.keys_size(); ++i)
       blocked_request.AddKey(request.keys(i));
     pull_request_.push(blocked_request);
 
@@ -337,7 +353,7 @@ void Server::ServePull(uint32 sender_id,
     Message_RequestMessage* reply_msg = new Message_RequestMessage;
     reply_msg->set_request_type(
       Message_RequestMessage_RequestType_key_value);
-    for (uint32 i = 0; i < request.keys_size(); ++i) {
+    for (int32 i = 0; i < request.keys_size(); ++i) {
       reply_msg->add_keys(request.keys(i));
       reply_msg->add_values(parameters_[request.keys(i) - start_key_]);
     }
@@ -394,7 +410,7 @@ void Server::Reconfigurate(const Message_ConfigMessage &config_msg) {
 
   // Reconfiguration of sender's id mapping to ip-ports, where the id 0 is
   // already added.
-  for (uint32 i = 1; i < config_msg.node_ip_port_size(); ++i) {
+  for (int32 i = 1; i < config_msg.node_ip_port_size(); ++i) {
     sender_->AddIdAddr(i, config_msg.node_ip_port(i));
   }
 
@@ -405,8 +421,8 @@ void Server::Reconfigurate(const Message_ConfigMessage &config_msg) {
   bool found_local = false;
   server_ids_.clear();
   servers_.clear();
-  for (uint32 i = 0; i < server_num_; ++i) {
-    uint32 server_i_id = config_msg.server_id(i);
+  for (int32 i = 0; i < server_num_; ++i) {
+    int32 server_i_id = config_msg.server_id(i);
     server_ids_.push_back(server_i_id);
     servers_.insert({server_i_id, i});
     if (server_i_id == local_id_) {
@@ -423,36 +439,34 @@ void Server::Reconfigurate(const Message_ConfigMessage &config_msg) {
   // if an agent recorded in the server is not in the new configuration,
   // the agent is considered to be out of service. Therefore, server need
   // to first remove the agent's last updates.
-  __gnu_cxx::hash_set<uint32>::iterator begin = agent_ids_.begin(),
-  end = agent_ids_.end(), iter;
-  for (iter = begin; iter != end; iter++) {
+  for (auto id : agent_ids_) {
     bool found = false;
-    for (uint32 i = 0; i < config_msg.worker_id_size(); ++i) {
-      if (config_msg.worker_id(i) == *iter) {
+    for (int32 i = 0; i < config_msg.worker_id_size(); ++i) {
+      if (config_msg.worker_id(i) == id) {
         found = true;
         break;
       }
     }
-    if (found == false) {
-      for (uint32 i = 0; i < version_buffer_[id_to_index_[*iter]].size();
-        ++i)
+    if (!found) {
+      for (int32 i = 0; i < version_buffer_[id_to_index_[id]].size(); ++i)
         finish_count_[i]--;
     }
   }
+
   // refresh agent id set
   agent_ids_.clear();
-  for (uint32 i = 0; i < config_msg.worker_id_size(); ++i) {
+  for (int32 i = 0; i < config_msg.worker_id_size(); ++i) {
     agent_ids_.insert(config_msg.worker_id(i));
   }
 
   // refresh master ids.
   master_ids_.clear();
-  for (uint32 i = 0; i < config_msg.master_id_size(); ++i) {
+  for (int32 i = 0; i < config_msg.master_id_size(); ++i) {
     master_ids_.push_back(config_msg.master_id(i));
   }
 
   // refresh map from worker ID to version buffer index
-  for (uint32 i = 0; i < agent_num_; ++i) {
+  for (int32 i = 0; i < agent_num_; ++i) {
     if (id_to_index_.find(config_msg.worker_id(i)) == id_to_index_.end()) {
       id_to_index_[config_msg.worker_id(i)] = version_buffer_.size();
       version_buffer_.push_back(std::queue<KeyValueList>());
@@ -462,14 +476,14 @@ void Server::Reconfigurate(const Message_ConfigMessage &config_msg) {
 
 // Send request message to other servers, requesting for there parameters
 void Server::RequestBackup() {
-  std::unordered_set<uint32> wait_list;
+  std::unordered_set<int32> wait_list;
   std::string str;
   Message* msg = new Message;
   Message_RequestMessage request;
-  uint32 server_id, server_index;
+  int32 server_id, server_index;
 
-  for (uint32 i = 1; i <= backup_size_; i++) {
-    uint32 target = (local_index_ - i + server_num_) % server_num_;
+  for (int32 i = 1; i <= backup_size_; i++) {
+    int32 target = (local_index_ - i + server_num_) % server_num_;
     server_id = server_ids_[target];
     wait_list.insert(server_id);
     msg->set_send_id(local_id_);
@@ -479,7 +493,7 @@ void Server::RequestBackup() {
       LOG(ERROR) << "Failed to send request to server: " << server_id;
     }
   }
-
+  // TODO: Read bottom_version_ from the message
   while (!wait_list.empty()) {
     if (receiver_->Receive(&str) == -1) {
       LOG(ERROR) << "Failed to receive configuration information from master.";
@@ -489,7 +503,7 @@ void Server::RequestBackup() {
     server_id = msg->send_id();
     server_index = servers_[server_id];
     request = msg->request_msg();
-    for (uint32 i = 0; i < request.values_size(); i++) {
+    for (int32 i = 0; i < request.values_size(); i++) {
       backup_parameters_[server_index][i] = request.values(i);
     }
     wait_list.erase(server_id);
@@ -499,16 +513,17 @@ void Server::RequestBackup() {
 };
 
 // Respond backup request from other servers
-void Server::RespondBackup(uint32 server_id) {
+void Server::RespondBackup(int32 server_id) {
     std::string reply_str;
     Message* msg_send = new Message;
     Message_RequestMessage* reply_msg = new Message_RequestMessage;
     reply_msg->set_request_type(
       Message_RequestMessage_RequestType_key_value);
-    for (uint32 i = 0; i < parameter_length_; ++i) {
+    for (int32 i = 0; i < parameter_length_; ++i) {
       reply_msg->add_keys(start_key_ + i);
       reply_msg->add_values(parameters_[i]);
     }
+    // TODO: Add bottom_version_ to the message
     msg_send->set_message_type(Message_MessageType_request);
     msg_send->set_allocated_request_msg(reply_msg);
     msg_send->set_send_id(local_id_);
@@ -519,6 +534,13 @@ void Server::RespondBackup(uint32 server_id) {
       LOG(ERROR) << "Failed to respond to server " << server_id
                  << "'s pull request.";
     }
+}
+
+// Extend current parameters to more parameters
+void Server::ExtendParameter() {
+  while (parameters_.size() < parameter_length_) {
+
+  }
 }
 
 }  // namespace rpscc

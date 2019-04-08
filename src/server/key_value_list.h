@@ -17,15 +17,15 @@ class KeyValueList {
     length_ = 0;
   }
 
-  void AddPair(uint32 key, float value);
-  uint32 Key(uint32 index);
-  float Value(uint32 index);
-  uint32 Length();
+  void AddPair(int32 key, float value);
+  int32 Key(int32 index);
+  float Value(int32 index);
+  int32 Length();
 
  private:
-  uint32 length_;
+  int32 length_;
 
-  std::vector<uint32> keys_;
+  std::vector<int32> keys_;
   std::vector<float> values_;
 };
 

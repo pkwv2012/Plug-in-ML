@@ -7,3 +7,6 @@ target_link_libraries(server_main server rt)
 
 add_executable(server_test server_test.cc)
 target_link_libraries(server_test server message rt)
+
+add_executable(server_gtest server_gtest.cc)
+target_link_libraries(server_gtest gtest_main server message rt )

@@ -142,7 +142,6 @@ bool Agent::Initialize(std::string para_fifo_name,
        << " <Id, Addr> map." << endl;
 
   // 3_4.Initialize the partition_.
-
   cout << "3_4.Initialize the partition_." << endl;
 
   int32* part_vec = new int32[server_num_ + 1];
@@ -150,6 +149,11 @@ bool Agent::Initialize(std::string para_fifo_name,
                                                   part_vec);
   partition_.Initialize(key_range_, server_num_, part_vec);
   delete[] part_vec;
+
+   // 3_5.Initialize master ids.
+  for (uint32 i = 0; i < config_msg.master_id_size(); ++i) {
+    master_ids_.push_back(config_msg.master_id(i));
+  }
 
   // 4.Initialize the fifo and shared memory
   cout << "4.Initialize the fifo and shared memory" << endl;

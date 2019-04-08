@@ -16,21 +16,21 @@ class PullInfo {
     length_ = 0;
     id_ = 0;
   }
-  uint32 Length();
-  void AddKey(uint32 key);
-  uint32 Key(uint32 index);
-  uint32 get_id() {
+  int32 Length();
+  void AddKey(int32 key);
+  int32 Key(int32 index);
+  int32 get_id() {
     return id_;
   }
-  void set_id(uint32 id) {
+  void set_id(int32 id) {
     id_ = id;
   }
 
  private:
-  uint32 length_;
-  uint32 id_;
+  int32 length_;
+  int32 id_;
 
-  std::vector<uint32> keys_;
+  std::vector<int32> keys_;
 };
 
 }  // namespace rpscc

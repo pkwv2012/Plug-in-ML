@@ -6,7 +6,6 @@
 #include <deque>
 #include <map>
 #include <queue>
-#include <hash_set>
 #include <string>
 #include <vector>
 
@@ -18,6 +17,9 @@
 
 namespace rpscc {
 
+DECLARE_string(master_ip_port);
+DECLARE_int32(server_port);
+DECLARE_string(net_interface);
 // The Server class manages a segment of parameters.
 // A Server in rpscc receives pull and push requests from the agents.
 // The server then updates the parameters it is in charge of, or return the
@@ -41,39 +43,40 @@ class Server {
   std::unique_ptr<Communicator> receiver_heatbeat_;
 
   std::string local_address_;
-  uint32 local_index_;
-  uint32 local_id_;
-  uint32 start_key_;
-  uint32 parameter_length_;
-  uint32 consistency_bound_;
-  uint32 bottom_version_;
-  uint32 agent_num_;
-  uint32 server_num_;
-  uint32 backup_size_;
+  int32 local_index_;
+  int32 local_id_;
+  int32 start_key_;
+  int32 parameter_length_;
+  int32 consistency_bound_;
+  int32 bottom_version_;
+  int32 agent_num_;
+  int32 server_num_;
+  int32 backup_size_;
 
-  std::vector<uint32> master_ids_;
-  std::vector<uint32> server_ids_;
-  std::unordered_map<uint32, uint32> servers_;
-  __gnu_cxx::hash_set<uint32> agent_ids_;
+  std::vector<int32> master_ids_;
+  std::vector<int32> server_ids_;
+  std::unordered_map<int32, int32> servers_;
+  std::unordered_set<int32> agent_ids_;
   std::vector<float> parameters_;
   std::vector<std::vector<float>> backup_parameters_;
   std::vector<std::queue<KeyValueList> > version_buffer_;
-  std::deque<uint32> finish_count_;
+  std::deque<int32> finish_count_;
   std::queue<PullInfo> pull_request_;
-  std::map<uint32, uint32> id_to_index_;
+  std::map<int32, int32> id_to_index_;
 
   // Thread for heartbeat
   pthread_t heartbeat_;
 
   bool RespondToAll();
   void UpdateParameter();
-  void ServePull(uint32 sender_id, const Message_RequestMessage &request);
-  void ServePush(uint32 sender_id, const Message_RequestMessage &request);
+  void ServePull(int32 sender_id, const Message_RequestMessage &request);
+  void ServePush(int32 sender_id, const Message_RequestMessage &request);
   static void* HeartBeat(void* arg);
   void Reconfigurate(const Message_ConfigMessage &config);
   // UNKNOWN: Use a new thread or not?
   void RequestBackup();
-  void RespondBackup(uint32 server_id);
+  void RespondBackup(int32 server_id);
+  void ExtendParameter();
 };
 
 }  // namespace rpscc
