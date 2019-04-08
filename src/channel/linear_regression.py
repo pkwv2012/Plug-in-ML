@@ -6,6 +6,8 @@ import os
 import mmap
 import struct
 import json
+import time
+import argparse
 
 from datetime import datetime
 import numpy as np
@@ -32,7 +34,7 @@ def read_from_agent(m):
 def transfer_to_agent(values, keys, w):
     """Write to shared memory."""
     w.seek(0)
-    w.write(struct.pack('i', len(values)))
+    w.write(struct.pack('i', len(keys)))
     # print values
     for v in values:
         w.write(struct.pack('f', v))
@@ -106,27 +108,36 @@ def predict(X, Y, w):
 if __name__ == '__main__':
     alone = True
     if len(sys.argv) >= 2:
-        if 'distributed' in sys.argv:
-            alone = False
+        num_worker = int(sys.argv[1])
+    else:
+        num_worker = 1
     data_path = '../../YearPredictionMSD.txt'
     train_file = '{}.train'.format(data_path)
     eval_file = '{}.eval'.format(data_path)
     num_features = None
     num_iter = 50
-    num_worker = 1 if alone else 2
+    # num_worker = 1 if alone else 3
     batch_size = int(400000 / num_worker)
-    learning_rate = 0.00000005
+    learning_rate = 0.0000001
 
     if not alone:
-        read_fd = os.open('/dev/shm/test_sharedMemory_sample1', os.O_RDWR | os.O_SYNC | os.O_CREAT)
-        write_fd = os.open('/dev/shm/test_sharedMemory_sample2', os.O_RDWR | os.O_SYNC | os.O_CREAT)
+        shm_read_file = '/dev/shm/test_sharedMemory_sample1'
+        shm_write_file = '/dev/shm/test_sharedMemory_sample2'
         read_fifo_path = '/tmp/test_fifo_sample1'
         write_fifo_path = '/tmp/test_fifo_sample2'
 
-        read_fifo = os.open(read_fifo_path, os.O_SYNC | os.O_CREAT | os.O_RDWR)
-        write_fifo = os.open(write_fifo_path, os.O_SYNC | os.O_CREAT | os.O_RDWR)
-        m = mmap.mmap(read_fd, 804, access=mmap.ACCESS_READ)
+        while not os.path.exists(read_fifo_path) or not os.path.exists(write_fifo_path) \
+            or not os.path.exists(shm_read_file) or not os.path.exists(shm_write_file):
+            print('waiting for FIFO')
+            time.sleep(1)
+
+        read_fd = os.open('/dev/shm/test_sharedMemory_sample1', os.O_RDWR | os.O_SYNC)
+        write_fd = os.open('/dev/shm/test_sharedMemory_sample2', os.O_RDWR | os.O_SYNC)
+
+        read_fifo = os.open(read_fifo_path, os.O_SYNC | os.O_RDWR)
+        write_fifo = os.open(write_fifo_path, os.O_SYNC | os.O_RDWR)
         w = mmap.mmap(write_fd, 804, mmap.MAP_SHARED, mmap.PROT_WRITE)
+        m = mmap.mmap(read_fd, 804, access=mmap.ACCESS_READ)
 
     train_X, train_y = load_data(train_file)
     eval_X, eval_y = load_data(eval_file)
@@ -162,9 +173,22 @@ if __name__ == '__main__':
         if alone:
             weights -= learning_rate * grad
         else:
+            with open('grad.log', 'a') as fout:
+                for g in -learning_rate*grad:
+                    fout.write(str(g) + ',')
+                fout.write('\n')
             transfer_to_agent(-learning_rate*grad, keys, w)
             os.write(write_fifo, struct.pack('i', 1))
-            weights -= learning_rate * grad
+            # weights -= learning_rate * grad
+
+        # if not alone:
+        #     time.sleep(2)
+        #     weights = [0 for i in range(num_features + 1)]
+        #     keys = [i for i in range(num_features + 1)]
+        #     transfer_to_agent(weights, keys, w)
+        #     os.write(write_fifo, struct.pack('i', 0))
+        #     os.read(read_fifo, 4)
+        #     weights, keys = read_from_agent(m)
         absolute_error, squared_error = predict(eval_X, eval_y, weights)
         min_absolute_error = min(min_absolute_error, absolute_error)
         min_squared_error = min(min_squared_error, squared_error)

@@ -6,6 +6,8 @@ import subprocess
 import io
 import os
 import signal
+import sys
+import time
 
 
 proc = subprocess.Popen(['ps', 'aux'], stdout=subprocess.PIPE)
@@ -27,3 +29,18 @@ for pid in pid_list:
     os.kill(int(pid), signal.SIGKILL)  # or signal.SIGKILL
     # check_call will failed.
     # subprocess.check_call(['kill', '-9 %s' % pid], shell=True)
+
+time.sleep(3)
+
+# remove shared memory files.
+try:
+    # subprocess.check_call('rm /dev/shm/test_sharedMemory_sample*', shell=True)
+    print('useless remove')
+except subprocess.CalledProcessError:
+    print('rm shared memory error')
+try:
+    subprocess.check_call('rm /tmp/test_fifo_sample*', shell=True)
+    print('useless')
+except subprocess.CalledProcessError:
+    print('rm fifo error')
+

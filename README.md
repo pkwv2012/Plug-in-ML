@@ -4,6 +4,20 @@ RPSCC project is a robust parameter server with configurable consistency.
 
 ## Installation
 
+### Install Protobuf
+Please see the [installation guide](https://github.com/protocolbuffers/protobuf/blob/master/src/README.md)
+
+```sh
+wget https://github.com/protocolbuffers/protobuf/releases/download/v3.7.1/protobuf-cpp-3.7.1.tar.gz
+cd protobuf-3.7.1
+./configure
+make -j8
+make check
+sudo make install
+sudo ldconfig
+```
+
+### Compile RPSCC
 ```sh
 git clone https://github.com/purkyston/rpscc
 cd rpscc
