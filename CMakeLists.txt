@@ -25,6 +25,10 @@ include_directories(
         "${PROJECT_SOURCE_DIR}/third_party/gtest/googletest/include"
 )
 
+# Add directory of libzmq.dylib.
+link_directories("/usr/local/lib")
+link_directories("/usr/local/opt/python/Frameworks/Python.framework/Versions/3.7/lib/python3.7/config-3.7m-darwin/")
+
 message(${PROJECT_BINARY_DIR})
 message(${PROJECT_SOURCE_DIR})
 

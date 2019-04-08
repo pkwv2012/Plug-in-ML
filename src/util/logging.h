@@ -96,8 +96,8 @@ inline void InitLogging(const char* argv0) {
 #define DCHECK_NE(x, y) CHECK((x) != (y))
 #endif  // NDEBUG
 
-#define LOG_INFO rpscc::LogMessage(__FILE__, __LINE__)
-#define LOG_ERROR LOG_INFO
+#define LOG_INFO rpscc::LogMessage(__FILE__, __LINE__, "INFO")
+#define LOG_ERROR rpscc::LogMessage(__FILE__, __LINE__, "ERROR")
 #define LOG_WARNING LOG_INFO
 #define LOG_FATAL rpscc::LogMessageFatal(__FILE__, __LINE__)
 #define LOG_QFATAL LOG_FATAL
@@ -151,7 +151,7 @@ class DateLogger {
 
 class LogMessage {
  public:
-  LogMessage(const char* file, int line)
+  LogMessage(const char* file, int line, const char* severity)
     :
 #ifdef __ANDROID__
     log_stream_(std::cout)
@@ -159,7 +159,8 @@ class LogMessage {
     log_stream_(std::cerr)
 #endif
   {
-    log_stream_ << "[" << pretty_date_.HumanDate() << "] " << file << ":"
+    log_stream_ << "[" << pretty_date_.HumanDate() << "] "
+                << "(" << severity << ") " << file << ":"
                 << line << ": ";
   }
   ~LogMessage() { log_stream_ << "\n"; }
@@ -177,7 +178,7 @@ class LogMessage {
 #if RPSCC_LOG_FATAL_THROW == 0
 class LogMessageFatal : public LogMessage {
  public:
-  LogMessageFatal(const char* file, int line) : LogMessage(file, line) {}
+  LogMessageFatal(const char* file, int line) : LogMessage(file, line, "FATAL") {}
   ~LogMessageFatal() {
     log_stream_ << "\n";
     abort();
