@@ -513,8 +513,13 @@ void Server::RequestBackup() {
     }
     msg->ParseFromString(str);
     server_id = msg->send_id();
-    server_index = servers_[server_id];
+    server_index = (local_index_ - 1 - servers_[server_id] + server_num_) % server_num_;
     request = msg->request_msg();
+
+    // Reset the backup_parameters_'s size if necessary
+    if (backup_parameters_[server_index].size() != request.values_size()) {
+      backup_parameters_[server_index] = std::vector<float32>(request.values_size());
+    }
     for (int32 i = 0; i < request.values_size(); i++) {
       backup_parameters_[server_index][i] = request.values(i);
     }
@@ -550,8 +555,10 @@ void Server::RespondBackup(int32 server_id) {
 
 // Extend current parameters to more parameters
 void Server::ExtendParameter() {
-  while (parameters_.size() < parameter_length_) {
-
+  for (int i = 0; i < backup_size_; i++) {
+    if (parameters_.size() == parameter_length_) break;
+    parameters_.insert(parameters_.begin(), backup_parameters_[i].begin(),
+                       backup_parameters_[i].end());
   }
 }
 

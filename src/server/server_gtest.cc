@@ -124,7 +124,6 @@ TEST(ServerTest, TestServer) {
   string server_addr3 = "127.0.0.1:5007";
 
   LOG(INFO) << "This is TestInitialize";
-
   if (fork() == 0) {
     SimulOuter();
   } else {
