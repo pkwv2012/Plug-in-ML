@@ -71,12 +71,12 @@ bool Server::Initialize() {
     LOG(ERROR) << "Failed to send register information to master.";
     return false;
   }
-  cout << "Wait for master's response" << endl;
+  LOG(INFO) << "Server: Wait for master's response";
   if (receiver_->Receive(&config_str) == -1) {
     LOG(ERROR) << "Failed to receive configuration information from master.";
     return false;
   }
-  cout << "Get response from master" << endl;
+  LOG(INFO) << "Server: Get response from master";
   msg_recv.ParseFromString(config_str);
   config_msg = msg_recv.config_msg();
 
@@ -86,14 +86,14 @@ bool Server::Initialize() {
   consistency_bound_ = config_msg.bound();
   agent_num_ = config_msg.worker_num();
   server_num_ = config_msg.server_num();
-  cout << "bound = " << consistency_bound_ << ", agent_num_ = " << agent_num_
-       << ", server_num_ = " << server_num_ << endl;
+  LOG(INFO) << "bound = " << consistency_bound_ << ", agent_num_ = " << agent_num_
+       << ", server_num_ = " << server_num_;
 
   // Initialization of sender's id mapping to ip-ports, where the id 0 is
   // already added.
   for (int32 i = 1; i < config_msg.node_ip_port_size(); ++i) {
     sender_->AddIdAddr(i, config_msg.node_ip_port(i));
-    cout << "AddIdAddr: " << i << " " << config_msg.node_ip_port(i) << endl;
+    LOG(INFO) << "Server: AddIdAddr: " << i << " " << config_msg.node_ip_port(i);
   }
 
   // Chenbin: Initialization of backup_parameters_
@@ -112,7 +112,7 @@ bool Server::Initialize() {
     int32 server_i_id = config_msg.server_id(i);
     server_ids_.push_back(server_i_id);
     servers_.insert({server_i_id, i});
-    cout << "Add server: " << server_i_id << " " << i << endl;
+    LOG(INFO) << "Add server: " << server_i_id << " " << i;
     if (server_i_id == local_id_) {
       local_index_ = i;
       start_key_ = config_msg.partition(i);
@@ -127,6 +127,7 @@ bool Server::Initialize() {
       }
     }
   }
+  LOG(INFO) << "start_key_ = " << start_key_ << " param_length = " << parameter_length_;
 
   if (found_local == false) {
     LOG(ERROR) << "Nothing is found to be assigned to the server.";
@@ -136,13 +137,13 @@ bool Server::Initialize() {
   // Initialize agent id set
   for (int32 i = 0; i < config_msg.worker_id_size(); ++i) {
     agent_ids_.insert(config_msg.worker_id(i));
-    cout << "Add agent: " << config_msg.worker_id(i) << endl;
+    LOG(INFO) << "Add agent: " << config_msg.worker_id(i);
   }
 
   // Initialize master ids.
   for (int32 i = 0; i < config_msg.master_id_size(); ++i) {
     master_ids_.push_back(config_msg.master_id(i));
-    cout << "Add master: " << config_msg.master_id(i) << endl;
+    LOG(INFO) << "Add master: " << config_msg.master_id(i);
   }
 
   // Initialize map from worker ID to version buffer index
@@ -162,7 +163,7 @@ bool Server::Initialize() {
 
   for (int32 i = 0; i < agent_num_; ++i)
     version_buffer_.push_back(std::queue<KeyValueList>());
-
+  LOG(INFO) << "Server: Server's initialization is done";
   return true;
 }
 
@@ -226,6 +227,7 @@ void Server::Start() {
 
   while (true) {
     std::string recv_str;
+    LOG(INFO) << "Server start receiving requests";
     receiver_->Receive(&recv_str);
     Message msg_recv;
     msg_recv.ParseFromString(recv_str);
@@ -233,6 +235,7 @@ void Server::Start() {
 
     // Chenbin: Is it a backup request from other servers?
     if (servers_.find(msg_recv.send_id()) != servers_.end()) {
+      LOG(INFO) << "RespondBackup";
       RespondBackup(msg_recv.send_id());
       continue;
     }
@@ -242,16 +245,19 @@ void Server::Start() {
       if (request.request_type()
         == Message_RequestMessage_RequestType_key_value) {
         // Push request:
+        LOG(INFO) << "ServePush";
         ServePush(sender_id, request);
       } else if (request.request_type()
         == Message_RequestMessage_RequestType_key) {
         // Pull request:
+        LOG(INFO) << "ServePull";
         ServePull(sender_id, request);
       }
       continue;
     }
 
     if (msg_recv.message_type() == Message_MessageType_config) {
+      LOG(INFO) << "Reconfigurate";
       Message_ConfigMessage config_msg = msg_recv.config_msg();
       Reconfigurate(config_msg);
       continue;
@@ -274,12 +280,15 @@ void Server::ServePush(int32 sender_id,
   // Chenbin: There may be a bug here, can bound errors be called here?
   finish_count_[version_buffer_[id_to_index_[sender_id]].size()]++;
   KeyValueList worker_update;
-  for (int32 i = 0; i < request.keys_size(); ++i)
+  for (int32 i = 0; i < request.keys_size(); ++i) {
     worker_update.AddPair(request.keys(i), request.values(i));
+    LOG(INFO) << "AddPair {" << request.keys(i) << ", " << request.values(i) << "}";
+  }
   if (version_buffer_[id_to_index_[sender_id]].size() >= consistency_bound_) {
     LOG(ERROR) << "Version_buffer_" << id_to_index_[sender_id]
                << " overfilled";
   } else {
+    LOG(INFO) << "Push to version_buffer_" << id_to_index_[sender_id];
     version_buffer_[id_to_index_[sender_id]].push(worker_update);
   }
   // Acknowledgement from server
@@ -305,6 +314,7 @@ void Server::ServePush(int32 sender_id,
   if (finish_count_[0] == agent_num_) {
     finish_count_.pop_front();
     finish_count_.push_back(0);
+    LOG(INFO) << "UpdateParameter & RespondToAll & RequestBackup";
     UpdateParameter();
     RespondToAll();
     RequestBackup();
@@ -476,6 +486,8 @@ void Server::Reconfigurate(const Message_ConfigMessage &config_msg) {
 
 // Send request message to other servers, requesting for there parameters
 void Server::RequestBackup() {
+  LOG(INFO) << "RequestBackup";
+  return;
   std::unordered_set<int32> wait_list;
   std::string str;
   Message* msg = new Message;
