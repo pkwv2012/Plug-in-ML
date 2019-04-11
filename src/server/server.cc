@@ -288,7 +288,8 @@ void Server::ServePush(int32 sender_id,
     LOG(ERROR) << "Version_buffer_" << id_to_index_[sender_id]
                << " overfilled";
   } else {
-    LOG(INFO) << "Push to version_buffer_" << id_to_index_[sender_id];
+    LOG(INFO) << "Push to version_buffer_[" << id_to_index_[sender_id]
+              << "/" << version_buffer_.size() << "]";
     version_buffer_[id_to_index_[sender_id]].push(worker_update);
   }
   // Acknowledgement from server
@@ -487,7 +488,7 @@ void Server::Reconfigurate(const Message_ConfigMessage &config_msg) {
 // Send request message to other servers, requesting for there parameters
 void Server::RequestBackup() {
   LOG(INFO) << "RequestBackup";
-  return;
+
   std::unordered_set<int32> wait_list;
   std::string str;
   Message* msg = new Message;
@@ -504,6 +505,7 @@ void Server::RequestBackup() {
     if (sender_->Send(server_id, str) == -1) {
       LOG(ERROR) << "Failed to send request to server: " << server_id;
     }
+    LOG(INFO) << "Server: Send request to server " << server_id;
   }
   // TODO: Read bottom_version_ from the message
   while (!wait_list.empty()) {
@@ -515,17 +517,18 @@ void Server::RequestBackup() {
     server_id = msg->send_id();
     server_index = (local_index_ - 1 - servers_[server_id] + server_num_) % server_num_;
     request = msg->request_msg();
-
+    LOG(INFO) << "Server: Get respond from server " << server_id;
     // Reset the backup_parameters_'s size if necessary
     if (backup_parameters_[server_index].size() != request.values_size()) {
       backup_parameters_[server_index] = std::vector<float32>(request.values_size());
     }
     for (int32 i = 0; i < request.values_size(); i++) {
       backup_parameters_[server_index][i] = request.values(i);
+      LOG(INFO) << "Backup index: " << server_index << "value: " << request.values(i);
     }
     wait_list.erase(server_id);
   }
-
+  LOG(INFO) << "Server: Backup is done";
   delete msg;
 };
 

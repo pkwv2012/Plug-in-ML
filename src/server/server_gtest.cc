@@ -109,11 +109,103 @@ void SimulOuter() {
   msg_send.set_send_id(1);
   msg_send.set_allocated_request_msg(request_msg);
   msg_send.SerializeToString(&request_str);
-  sender.Send(2, request_str);
-  sleep(1);
   LOG(INFO) << "Agent: Agent send push request string to server";
+  sleep(1);
+  sender.Send(2, request_str);
   sleep(10);
 }
+
+void SimulServer(int server_id, int16 listen_port, int start_key, int param_len) {
+  LOG(INFO) << "Helper Server: " << server_id << " " << listen_port << " " << start_key
+            << param_len;
+  ZmqCommunicator sender;
+  ZmqCommunicator receiver;
+
+  Message msg_send;
+  Message msg_recv;
+  Message_RequestMessage* msg_reply;
+
+  string msg_str;
+
+  sender.Initialize(64/* ring_size */, true, 1024/* listen_port */);
+  sender.AddIdAddr(2, "127.0.0.1:5005");
+  receiver.Initialize(64, false, listen_port);
+
+  vector<float> parameters;
+  for (int i = 0; i < param_len; i++)
+    parameters.push_back(i + start_key * 10);
+
+  while (true) {
+    LOG(INFO) << "Helper Server: Wait for server's backup_request";
+    receiver.Receive(&msg_str);
+    LOG(INFO) << "Helper Server: Get server's request";
+    msg_recv.ParseFromString(msg_str);
+    EXPECT_EQ(msg_recv.recv_id(), server_id);
+    EXPECT_EQ(msg_recv.send_id(), 2);
+    msg_reply = new Message_RequestMessage;
+    msg_reply->set_request_type(Message_RequestMessage_RequestType_key_value);
+    for (int32 i = 0; i < param_len; ++i) {
+      msg_reply->add_keys(start_key + i);
+      msg_reply->add_values(parameters[i]);
+    }
+    msg_send.set_message_type(Message_MessageType_request);
+    msg_send.set_allocated_request_msg(msg_reply);
+    msg_send.set_send_id(server_id);
+    msg_send.set_recv_id(2);
+    msg_send.SerializeToString(&msg_str);
+    if (sender.Send(2, msg_str) == -1) {
+      LOG(ERROR) << "Failed to respond to server " << server_id
+                 << "'s pull request.";
+    }
+    LOG(INFO) << "Helper Server: Sent respond to server";
+  }
+
+}
+
+//void Server::RequestBackup() {
+//  LOG(INFO) << "RequestBackup";
+//
+//  std::unordered_set<int32> wait_list;
+//  std::string str;
+//  Message* msg = new Message;
+//  Message_RequestMessage request;
+//  int32 server_id, server_index;
+//
+//  for (int32 i = 1; i <= backup_size_; i++) {
+//    int32 target = (local_index_ - i + server_num_) % server_num_;
+//    server_id = server_ids_[target];
+//    wait_list.insert(server_id);
+//    msg->set_send_id(local_id_);
+//    msg->set_recv_id(server_id);
+//    msg->SerializeToString(&str);
+//    if (sender_->Send(server_id, str) == -1) {
+//      LOG(ERROR) << "Failed to send request to server: " << server_id;
+//    }
+//  }
+//  // TODO: Read bottom_version_ from the message
+//  while (!wait_list.empty()) {
+//    if (receiver_->Receive(&str) == -1) {
+//      LOG(ERROR) << "Failed to receive configuration information from master.";
+//      return;
+//    }
+//    msg->ParseFromString(str);
+//    server_id = msg->send_id();
+//    server_index = (local_index_ - 1 - servers_[server_id] + server_num_) % server_num_;
+//    request = msg->request_msg();
+//
+//    // Reset the backup_parameters_'s size if necessary
+//    if (backup_parameters_[server_index].size() != request.values_size()) {
+//      backup_parameters_[server_index] = std::vector<float32>(request.values_size());
+//    }
+//    for (int32 i = 0; i < request.values_size(); i++) {
+//      backup_parameters_[server_index][i] = request.values(i);
+//    }
+//    wait_list.erase(server_id);
+//  }
+//
+//  delete msg;
+//};
+
 
 TEST(ServerTest, TestServer) {
   Server server;
@@ -125,7 +217,15 @@ TEST(ServerTest, TestServer) {
 
   LOG(INFO) << "This is TestInitialize";
   if (fork() == 0) {
-    SimulOuter();
+    if (fork() == 0) {
+      if (fork() == 0) {
+        SimulServer(4, 5007, 7, 3);
+      } else {
+        SimulServer(3, 5006, 5, 2);
+      }
+    } else {
+      SimulOuter();
+    }
   } else {
     sleep(3);
     FLAGS_master_ip_port = master_addr;
@@ -133,7 +233,6 @@ TEST(ServerTest, TestServer) {
     FLAGS_net_interface = "lo";
     server.Initialize();
     server.Start();
-
   }
 }
 
