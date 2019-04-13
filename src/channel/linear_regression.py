@@ -179,7 +179,7 @@ if __name__ == '__main__':
                 fout.write('\n')
             transfer_to_agent(-learning_rate*grad, keys, w)
             os.write(write_fifo, struct.pack('i', 1))
-            # weights -= learning_rate * grad
+            weights -= learning_rate * grad
 
         # if not alone:
         #     time.sleep(2)
