@@ -234,9 +234,16 @@ void Server::Start() {
     int32 sender_id = msg_recv.send_id();
 
     // Chenbin: Is it a backup request from other servers?
+    // Or a list of parameters?
     if (servers_.find(msg_recv.send_id()) != servers_.end()) {
-      LOG(INFO) << "RespondBackup";
-      RespondBackup(msg_recv.send_id());
+      // Parameters from other servers
+      if (msg_recv.has_request_msg()) {
+        LOG(INFO) << "Backup";
+        Backup(msg_recv);
+      } else {
+        LOG(INFO) << "RespondBackup";
+        RespondBackup(msg_recv.send_id());
+      }
       continue;
     }
 
@@ -483,54 +490,52 @@ void Server::Reconfigurate(const Message_ConfigMessage &config_msg) {
       version_buffer_.push_back(std::queue<KeyValueList>());
     }
   }
+
+  // Extend parameters if necessary
+  ExtendParameter();
 }
 
 // Send request message to other servers, requesting for there parameters
 void Server::RequestBackup() {
   LOG(INFO) << "RequestBackup";
 
-  std::unordered_set<int32> wait_list;
   std::string str;
   Message* msg = new Message;
   Message_RequestMessage request;
-  int32 server_id, server_index;
+  int32 server_id;
 
   for (int32 i = 1; i <= backup_size_; i++) {
     int32 target = (local_index_ - i + server_num_) % server_num_;
     server_id = server_ids_[target];
-    wait_list.insert(server_id);
     msg->set_send_id(local_id_);
     msg->set_recv_id(server_id);
+    msg->set_message_type(Message_MessageType_request);
     msg->SerializeToString(&str);
     if (sender_->Send(server_id, str) == -1) {
       LOG(ERROR) << "Failed to send request to server: " << server_id;
     }
     LOG(INFO) << "Server: Send request to server " << server_id;
   }
-  // TODO: Read bottom_version_ from the message
-  while (!wait_list.empty()) {
-    if (receiver_->Receive(&str) == -1) {
-      LOG(ERROR) << "Failed to receive configuration information from master.";
-      return;
-    }
-    msg->ParseFromString(str);
-    server_id = msg->send_id();
-    server_index = (local_index_ - 1 - servers_[server_id] + server_num_) % server_num_;
-    request = msg->request_msg();
-    LOG(INFO) << "Server: Get respond from server " << server_id;
-    // Reset the backup_parameters_'s size if necessary
-    if (backup_parameters_[server_index].size() != request.values_size()) {
-      backup_parameters_[server_index] = std::vector<float32>(request.values_size());
-    }
-    for (int32 i = 0; i < request.values_size(); i++) {
-      backup_parameters_[server_index][i] = request.values(i);
-      LOG(INFO) << "Backup index: " << server_index << "value: " << request.values(i);
-    }
-    wait_list.erase(server_id);
-  }
-  LOG(INFO) << "Server: Backup is done";
-  delete msg;
 };
+
+// Backup
+void Server::Backup(const Message& msg) {
+  Message_RequestMessage request;
+  int32 server_id, server_index;
+
+  server_id = msg.send_id();
+  server_index = (local_index_ - 1 - servers_[server_id] + server_num_) % server_num_;
+  request = msg.request_msg();
+  LOG(INFO) << "Server: Get respond from server " << server_id;
+  // Reset the backup_parameters_'s size if necessary
+  if (backup_parameters_[server_index].size() != request.values_size()) {
+    backup_parameters_[server_index] = std::vector<float32>(request.values_size());
+  }
+  for (int32 i = 0; i < request.values_size(); i++) {
+    backup_parameters_[server_index][i] = request.values(i);
+    LOG(INFO) << "Backup index: " << server_index << "value: " << request.values(i);
+  }
+}
 
 // Respond backup request from other servers
 void Server::RespondBackup(int32 server_id) {

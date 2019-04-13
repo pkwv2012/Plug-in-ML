@@ -11,7 +11,6 @@
 #include "src/communication/zmq_communicator.h"
 #include "src/message/message.pb.h"
 
-
 using namespace std;
 using namespace rpscc;
 
@@ -154,10 +153,29 @@ void SimulServer(int server_id, int16 listen_port, int start_key, int param_len)
     msg_send.set_recv_id(2);
     msg_send.SerializeToString(&msg_str);
     if (sender.Send(2, msg_str) == -1) {
-      LOG(ERROR) << "Failed to respond to server " << server_id
+      LOG(ERROR) << "Failed to respond to server " << 2
                  << "'s pull request.";
     }
     LOG(INFO) << "Helper Server: Sent respond to server";
+
+    sleep(1);
+    LOG(INFO) << "Helper Server: Sent backup_request to server";
+    msg_send.clear_request_msg();
+    msg_send.SerializeToString(&msg_str);
+    if (sender.Send(2, msg_str) == -1) {
+      LOG(ERROR) << "Failed to request to server" << 2;
+    }
+    LOG(INFO) << "Helper Server: Sent backup request to server 2";
+    LOG(INFO) << "Helper Server: Wait for server's backup_request";
+    receiver.Receive(&msg_str);
+    LOG(INFO) << "Helper Server: Get server's request";
+    msg_recv.ParseFromString(msg_str);
+    EXPECT_EQ(2, msg_recv.send_id());
+    EXPECT_EQ(server_id, msg_recv.recv_id());
+    for (int32 i = 0; i < msg_recv.request_msg().values_size(); i++) {
+      LOG(INFO) << "Get params " << msg_recv.request_msg().keys(i) << " "
+                << msg_recv.request_msg().values(i);
+    }
   }
 
 }

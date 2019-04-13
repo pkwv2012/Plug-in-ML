@@ -75,6 +75,7 @@ class Server {
   void Reconfigurate(const Message_ConfigMessage &config);
   // UNKNOWN: Use a new thread or not?
   void RequestBackup();
+  void Backup(const Message& msg);
   void RespondBackup(int32 server_id);
   void ExtendParameter();
 };
