@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 #include <stdexcept>
+#include <mutex>
 
 namespace rpscc {
 
@@ -159,11 +160,15 @@ class LogMessage {
     log_stream_(std::cerr)
 #endif
   {
+    cerr_mutex.lock();
     log_stream_ << "[" << pretty_date_.HumanDate() << "] "
                 << "(" << severity << ") " << file << ":"
                 << line << ": ";
   }
-  ~LogMessage() { log_stream_ << "\n"; }
+  ~LogMessage() {
+    log_stream_ << "\n";
+    cerr_mutex.unlock();
+  }
   std::ostream& stream() { return log_stream_; }
 
  protected:
@@ -173,6 +178,7 @@ class LogMessage {
   DateLogger pretty_date_;
   LogMessage(const LogMessage&);
   void operator=(const LogMessage&);
+  static std::mutex cerr_mutex;
 };
 
 #if RPSCC_LOG_FATAL_THROW == 0
