@@ -7,10 +7,11 @@
 #define SRC_UTIL_LOGGING_H_
 #include <cstdio>
 #include <cstdlib>
+#include <iostream>
+#include <mutex>
 #include <string>
 #include <vector>
 #include <stdexcept>
-#include <mutex>
 
 namespace rpscc {
 
@@ -150,6 +151,14 @@ class DateLogger {
   char buffer_[9];
 };
 
+// The std::cerr and std::cout is thread-safe object, which means
+// a single operator<< call is thread-safe, but when we call
+// operator<< multiple times in one line it's not thread-safe, and
+// the output will be overlapped.
+// Having already try to use mutex to protect the std::cerr, but
+// after the compiler's optimization, there is starvation.
+// TODO: what will happen is the program crash before the destructor called?
+// TODO: how to make the logging process-safe?
 class LogMessage {
  public:
   LogMessage(const char* file, int line, const char* severity)
@@ -160,25 +169,24 @@ class LogMessage {
     log_stream_(std::cerr)
 #endif
   {
-    cerr_mutex.lock();
-    log_stream_ << "[" << pretty_date_.HumanDate() << "] "
-                << "(" << severity << ") " << file << ":"
-                << line << ": ";
+    buffer_stream_ << "[" << pretty_date_.HumanDate() << "] "
+                   << "(" << severity << ") " << file << ":"
+                   << line << ": ";
   }
   ~LogMessage() {
-    log_stream_ << "\n";
-    cerr_mutex.unlock();
+    buffer_stream_ << '\n';
+    log_stream_ << buffer_stream_.str();
   }
-  std::ostream& stream() { return log_stream_; }
+  std::stringstream& stream() { return buffer_stream_; }
 
  protected:
   std::ostream& log_stream_;
+  std::stringstream buffer_stream_;
 
  private:
   DateLogger pretty_date_;
   LogMessage(const LogMessage&);
   void operator=(const LogMessage&);
-  static std::mutex cerr_mutex;
 };
 
 #if RPSCC_LOG_FATAL_THROW == 0

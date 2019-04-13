@@ -5,6 +5,8 @@
 #include "src/util/logging.h"
 
 namespace rpscc {
-  std::mutex LogMessage::cerr_mutex;
+// There is no need to have a mutex,
+// because std::cerr::operator<< is thread-safe
+// std::mutex LogMessage::cerr_mutex;
 }  // namespace rpscc
 
