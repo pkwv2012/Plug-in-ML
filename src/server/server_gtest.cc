@@ -17,7 +17,7 @@ using namespace rpscc;
 /*
 string master_addr = "127.0.0.1:5000";
 string agent_addr = "127.0.0.1:5555";
-string server_addr = "127.0.0.1:5005";
+string server_addr = "127.0.0.1:5500";
 string server_addr2 = "127.0.0.1:5006";
 string server_addr3 = "127.0.0.1:5007";
 */
@@ -52,10 +52,10 @@ void SimulOuter() {
       LOG(INFO) << "Master: Server's ip = " << reg_msg.ip() << " port = "
            << reg_msg.port() << " is_server = " << reg_msg.is_server();
       EXPECT_EQ(reg_msg.ip(), "127.0.0.1");
-      EXPECT_EQ(reg_msg.port(), 5005);
+      EXPECT_EQ(reg_msg.port(), 5500);
       EXPECT_EQ(reg_msg.is_server(), 1);
 
-      sender.AddIdAddr(2, "127.0.0.1:5005");
+      sender.AddIdAddr(2, "127.0.0.1:5500");
   }
 
   {
@@ -65,7 +65,7 @@ void SimulOuter() {
 
     config_msg->add_node_ip_port("127.0.0.1:5000");  // Master 0
     config_msg->add_node_ip_port("127.0.0.1:5555");  // Agent  1
-    config_msg->add_node_ip_port("127.0.0.1:5005");  // Server 2
+    config_msg->add_node_ip_port("127.0.0.1:5500");  // Server 2
     config_msg->add_node_ip_port("127.0.0.1:5006");  // Server 3
     config_msg->add_node_ip_port("127.0.0.1:5007");  // Server 4
 
@@ -109,13 +109,43 @@ void SimulOuter() {
   msg_send.set_allocated_request_msg(request_msg);
   msg_send.SerializeToString(&request_str);
   LOG(INFO) << "Agent: Agent send push request string to server";
-  sleep(1);
   sender.Send(2, request_str);
+
+  sleep(1);
+  // Then, let's send heartbeats to server
+  sender.DeleteId(2);
+  sender.AddIdAddr(2, "127.0.0.1:5501");
+  Message send_msg, recv_msg;
+  Message_HeartbeatMessage* hb_msg = new Message_HeartbeatMessage();
+  std::string send_str, recv_str;
+
+  hb_msg->set_is_live(true);
+  send_msg.set_message_type(Message_MessageType_heartbeat);
+  send_msg.set_send_id(0);
+  send_msg.set_allocated_heartbeat_msg(hb_msg);
+  send_msg.set_recv_id(2);
+  send_msg.SerializeToString(&send_str);
+
+  for (int i = 0; i < 5; i++) {
+    sleep(1);
+    // Config the send_msg
+    if (sender.Send(2, send_str) == -1) {
+      LOG(ERROR) << "Cannot send a heartbeat to master";
+    }
+    LOG(INFO) << "Master: Send heartbeat message to master";
+
+    if (master_receiver.Receive(&recv_str) == -1) {
+      LOG(ERROR) << "Error in receiving heartbeat from master";
+    }
+    recv_msg.ParseFromString(recv_str);
+    LOG(INFO) << "Master: Receive heartbeat message from master with id "
+              << recv_msg.send_id();
+  }
   sleep(10);
 }
 
 void SimulServer(int server_id, int16 listen_port, int start_key, int param_len) {
-  LOG(INFO) << "Helper Server: " << server_id << " " << listen_port << " " << start_key
+  LOG(INFO) << "Helper Server " << server_id << ": " << server_id << " " << listen_port << " " << start_key
             << param_len;
   ZmqCommunicator sender;
   ZmqCommunicator receiver;
@@ -127,7 +157,7 @@ void SimulServer(int server_id, int16 listen_port, int start_key, int param_len)
   string msg_str;
 
   sender.Initialize(64/* ring_size */, true, 1024/* listen_port */);
-  sender.AddIdAddr(2, "127.0.0.1:5005");
+  sender.AddIdAddr(2, "127.0.0.1:5500");
   receiver.Initialize(64, false, listen_port);
 
   vector<float> parameters;
@@ -135,9 +165,9 @@ void SimulServer(int server_id, int16 listen_port, int start_key, int param_len)
     parameters.push_back(i + start_key * 10);
 
   while (true) {
-    LOG(INFO) << "Helper Server: Wait for server's backup_request";
+    LOG(INFO) << "Helper Server " << server_id << ": Wait for server's backup_request";
     receiver.Receive(&msg_str);
-    LOG(INFO) << "Helper Server: Get server's request";
+    LOG(INFO) << "Helper Server " << server_id << ": Get server's request";
     msg_recv.ParseFromString(msg_str);
     EXPECT_EQ(msg_recv.recv_id(), server_id);
     EXPECT_EQ(msg_recv.send_id(), 2);
@@ -156,80 +186,35 @@ void SimulServer(int server_id, int16 listen_port, int start_key, int param_len)
       LOG(ERROR) << "Failed to respond to server " << 2
                  << "'s pull request.";
     }
-    LOG(INFO) << "Helper Server: Sent respond to server";
+    LOG(INFO) << "Helper Server " << server_id << ": Sent respond to server";
 
     sleep(1);
-    LOG(INFO) << "Helper Server: Sent backup_request to server";
+    LOG(INFO) << "Helper Server " << server_id << ": Try to send backup_request to server";
     msg_send.clear_request_msg();
     msg_send.SerializeToString(&msg_str);
     if (sender.Send(2, msg_str) == -1) {
       LOG(ERROR) << "Failed to request to server" << 2;
     }
-    LOG(INFO) << "Helper Server: Sent backup request to server 2";
-    LOG(INFO) << "Helper Server: Wait for server's backup_request";
+    LOG(INFO) << "Helper Server " << server_id << ": Sent backup request to server 2";
+    LOG(INFO) << "Helper Server " << server_id << ": Wait for server's backup_respond";
     receiver.Receive(&msg_str);
-    LOG(INFO) << "Helper Server: Get server's request";
+    LOG(INFO) << "Helper Server " << server_id << ": Get server's request";
     msg_recv.ParseFromString(msg_str);
     EXPECT_EQ(2, msg_recv.send_id());
     EXPECT_EQ(server_id, msg_recv.recv_id());
     for (int32 i = 0; i < msg_recv.request_msg().values_size(); i++) {
-      LOG(INFO) << "Get params " << msg_recv.request_msg().keys(i) << " "
+      LOG(INFO) << "Helper Server " << server_id << "Get params " << msg_recv.request_msg().keys(i) << " "
                 << msg_recv.request_msg().values(i);
     }
   }
 
 }
 
-//void Server::RequestBackup() {
-//  LOG(INFO) << "RequestBackup";
-//
-//  std::unordered_set<int32> wait_list;
-//  std::string str;
-//  Message* msg = new Message;
-//  Message_RequestMessage request;
-//  int32 server_id, server_index;
-//
-//  for (int32 i = 1; i <= backup_size_; i++) {
-//    int32 target = (local_index_ - i + server_num_) % server_num_;
-//    server_id = server_ids_[target];
-//    wait_list.insert(server_id);
-//    msg->set_send_id(local_id_);
-//    msg->set_recv_id(server_id);
-//    msg->SerializeToString(&str);
-//    if (sender_->Send(server_id, str) == -1) {
-//      LOG(ERROR) << "Failed to send request to server: " << server_id;
-//    }
-//  }
-//  // TODO: Read bottom_version_ from the message
-//  while (!wait_list.empty()) {
-//    if (receiver_->Receive(&str) == -1) {
-//      LOG(ERROR) << "Failed to receive configuration information from master.";
-//      return;
-//    }
-//    msg->ParseFromString(str);
-//    server_id = msg->send_id();
-//    server_index = (local_index_ - 1 - servers_[server_id] + server_num_) % server_num_;
-//    request = msg->request_msg();
-//
-//    // Reset the backup_parameters_'s size if necessary
-//    if (backup_parameters_[server_index].size() != request.values_size()) {
-//      backup_parameters_[server_index] = std::vector<float32>(request.values_size());
-//    }
-//    for (int32 i = 0; i < request.values_size(); i++) {
-//      backup_parameters_[server_index][i] = request.values(i);
-//    }
-//    wait_list.erase(server_id);
-//  }
-//
-//  delete msg;
-//};
-
-
 TEST(ServerTest, TestServer) {
   Server server;
   string master_addr = "127.0.0.1:5000";
   string agent_addr = "127.0.0.1:5555";
-  string server_addr = "127.0.0.1:5005";
+  string server_addr = "127.0.0.1:5500";
   string server_addr2 = "127.0.0.1:5006";
   string server_addr3 = "127.0.0.1:5007";
 
@@ -247,7 +232,7 @@ TEST(ServerTest, TestServer) {
   } else {
     sleep(3);
     FLAGS_master_ip_port = master_addr;
-    FLAGS_server_port = 5005;
+    FLAGS_server_port = 5500;
     FLAGS_net_interface = "lo";
     server.Initialize();
     server.Start();

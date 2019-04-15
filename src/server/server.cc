@@ -401,21 +401,23 @@ void* Server::HeartBeat(void* arg) {
   hb_msg->set_is_live(true);
   send_msg.set_message_type(Message_MessageType_heartbeat);
   send_msg.set_send_id(server->local_id_);
+  send_msg.set_allocated_heartbeat_msg(hb_msg);
 
   while (1) {
     if (server->receiver_heatbeat_->Receive(&recv_str) == -1) {
       LOG(ERROR) << "Error in receiving heartbeat from master";
     }
     recv_msg.ParseFromString(recv_str);
-
+    LOG(INFO) << "Server: Receive heartbeat message from master with id "
+              << recv_msg.send_id();
     // Config the send_msg
     send_msg.set_recv_id(recv_msg.send_id());
-    send_msg.set_allocated_heartbeat_msg(hb_msg);
     send_msg.SerializeToString(&send_str);
 
     if (server->sender_->Send(0, send_str) == -1) {
       LOG(ERROR) << "Cannot send a heartbeat to master";
     }
+    LOG(INFO) << "Server: Send heartbeat message to master";
   }
 }
 
