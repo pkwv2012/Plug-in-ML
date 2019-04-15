@@ -21,12 +21,81 @@ DEFINE_int32(listen_port, 16666, "The listening port of cluster.");
 DEFINE_int32(heartbeat_gap, 3, "The heartbeat gap.");
 DEFINE_int32(detect_dead_node, 5, "The time gap to detect dead node.");
 DEFINE_int32(max_cluster_node, 10000, "The maximum cluster number.");
-
+DEFINE_string(zookeeper_hosts, "127.0.0.1:2181", ""
+              "Comma separated host:port pairs, "
+              "each corresponding to a zkserver. e.g. "
+              "'127.0.0.1:3000,127.0.0.1:3001,127.0.0.1:3002'");
+DEFINE_int32(client_id, 0, "The client id used in zookeeper.");
+DEFINE_string(task_name, "ml_task", "The name used in zookeeper node.");
 
 void Master::WaitForClusterReady() {
 }
 
+#ifdef USE_ZOOKEEPER
+// return 0, if create success (means this master is the lead master),
+// otherwise failed, which means this master is not the lead master.
+static int CreateZookeeperNode(zhandle_t* zh) {
+  struct ACL CREATE_ONLY_ACL[] = {{ZOO_PERM_ALL, ZOO_ANYONE_ID_UNSAFE}};
+  struct ACL_vector CREATE_ONLY = {1, CREATE_ONLY_ACL};
+  char buffer[512];
+  std::string node_name = "/" + FLAGS_task_name;
+  std::string node_value = "master_ip";
+  int rc = zoo_create(zh,
+                      node_name.c_str() ,
+                      node_value.c_str(),
+                      5,
+                      &CREATE_ONLY,
+                      ZOO_EPHEMERAL,  // create ephemeral node for leader selection
+                      buffer,
+                      sizeof(buffer)-1);
+  LOG(INFO) << "zoo_create: " << rc << std::endl;
+  struct Stat stat;
+  // register a wathcer.
+  int zoo_state = zoo_exists(zh, node_name.c_str(), 1, &stat);
+  LOG(INFO) << "here" << std::endl;
+  LOG(INFO) << "zoo_exists: " << zoo_state << std::endl;
+  return rc;
+}
+
+static void ZkCallback(zhandle_t* zh, int type, int state,
+                       const char* path, void* watchCtx) {
+  LOG(INFO) << "Callback|type=" << type
+            << "|state=" << state
+            << "|path=" << path << std::endl;
+  std::string node_name = "/" + FLAGS_task_name;
+  std::string spath(path);
+  if (spath == node_name) {
+    auto rc = CreateZookeeperNode(zh);
+    if (rc == 0) {
+      // TODO: Do what master lead should do.
+      Master::Get()->set_is_lead(true);
+      Master::Get()->MainLoop();
+    }  // Otherwise, do nothing
+  }
+}
+
+void Master::init_zookeeper() {
+  // 1. connect to zookeeper,
+  zh_ = zookeeper_init(FLAGS_zookeeper_hosts.c_str(),
+                           ZkCallback,
+                           100,
+                           0,
+                           nullptr,
+                           0);
+  // 2. create zookeeper ephemeral node;
+  int rc = CreateZookeeperNode(zh_);
+  if (rc == 0) {
+    // TODO: Do what master lead should do.
+    is_lead_ = true;
+  }   // Otherwise, do nothing.
+}
+
+#endif
+
 void Master::Initialize(const int16 &listen_port) {
+#ifdef USE_ZOOKEEPER
+  init_zookeeper();
+#endif  // USE_ZOOKEEPER
   this->sender_.reset(new ZmqCommunicator());
   this->sender_->Initialize(16, true, listen_port);
   this->receiver_.reset(new ZmqCommunicator());
@@ -34,6 +103,15 @@ void Master::Initialize(const int16 &listen_port) {
 }
 
 void Master::MainLoop() {
+  LOG(INFO) << "This master is "
+            << (is_lead_? "" : "not ")
+            << "the lead master" << std::endl;
+  if (!is_lead_) {
+    while (true) {
+      std::this_thread::sleep_for(std::chrono::seconds(10));
+    }
+    return;
+  }
   std::cout << "Main loop";
   bool terminated = false;
   while (!terminated) {
@@ -106,6 +184,7 @@ void Master::MainLoop() {
 Master::Master() {
   LOG(INFO) << "Master initialization" << std::endl;
   config_.Initialize(""/*config file name*/);
+  is_lead_ = true;
 }
 
 bool Master::DeliverConfig() {
@@ -161,6 +240,10 @@ std::vector<int> Master::GetDeadNode() {
 }
 
 int32_t Master::Initialize(const std::string &master_ip_port) {
+#ifdef USE_ZOOKEEPER
+  // 1. Init zookeeper node, finish leader election.
+  init_zookeeper();
+#endif
   std::stringstream ss(master_ip_port);
   int count = 0;
   while (ss.good()) {

@@ -17,6 +17,31 @@ sudo make install
 sudo ldconfig
 ```
 
+### Install Zookeeper [optional]
+
+```sh
+# download the tar from this page
+# http://zookeeper.apache.org/
+
+# compile the cpp client
+# according to this page: 
+# https://github.com/apache/zookeeper/tree/release-3.4.14/zookeeper-client/zookeeper-client-c
+
+cd zookeeper-x.x.x/zookeeper-client/zookeeper-client-c
+sudo apt-get install libcppunit-dev
+# cppunit.m4 may be installed in the /usr/share/aclocal
+# or in the /usr/local/share/aclocal
+# use the script below to generate the configure file
+ACLOCAL="aclocal -I /usr/local/share/aclocal" autoreconf -if
+
+make [run-check | check]
+sudo make install
+```
+
+If using the zookeeper component, please add the 'USE_ZOOKEEPER' defination 
+into the compiler.
+
+
 ### Compile RPSCC
 ```sh
 git clone https://github.com/purkyston/rpscc

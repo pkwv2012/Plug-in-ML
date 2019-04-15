@@ -1,7 +1,10 @@
 
+# use zookeeper or not
+# add_definitions("-DUSE_ZOOKEEPER")
+
 add_library(master master.cc task_config.cc)
 
-target_link_libraries(master zmq_communicator gflags message logging)
+target_link_libraries(master zmq_communicator gflags message logging zookeeper_mt)
 
 add_executable(master_main master_main.cc)
 
@@ -12,3 +15,7 @@ target_link_libraries(master_test gtest_main message zmq_communicator master gfl
 
 add_executable(test_process test_process.cc)
 target_link_libraries(test_process message zmq_communicator master gflags pthread gtest logging)
+
+add_executable(zk_test zookeeper_test.cc)
+
+target_link_libraries(zk_test zookeeper_mt)

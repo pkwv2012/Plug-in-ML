@@ -15,6 +15,10 @@
 #include "src/master/task_config.h"
 #include "src/util/logging.h"
 
+#ifdef USE_ZOOKEEPER
+#include "zookeeper/zookeeper.h"
+#endif
+
 namespace rpscc {
 
 DECLARE_int32(listen_port);
@@ -26,6 +30,12 @@ class Master {
   static Master* Get() {
     static Master master;
     return &master;
+  }
+
+  ~Master() {
+#ifdef USE_ZOOKEEPER
+    zookeeper_close(zh_);
+#endif
   }
 
   void Initialize(const int16& listen_port = 12018);
@@ -54,6 +64,21 @@ class Master {
   // Deliver heartbeat message to all node.
   void DeliverHeartbeat();
 
+#ifdef USE_ZOOKEEPER
+  // The callback function used when notification received
+  // from zookeeper.
+  // void ZkCallback(zhandle_t* zh, int type, int state,
+  //                 const char* path, void* watchCtx);
+
+  // init zookeeper node, and listen to the notification from zookeeper.
+  void init_zookeeper();
+
+  // set the is_lead_
+  void set_is_lead(const bool& is_lead) {
+    is_lead_ = is_lead;
+  }
+#endif  // USE_ZOOKEEPER
+
  private:
   // Deal with register message
   void ProcessRegisterMsg(Message* msg);
@@ -67,6 +92,10 @@ class Master {
   std::unique_ptr<Communicator> receiver_;
   std::unordered_map<int, time_t> alive_node_;
   std::unordered_set<int32_t> terminated_node_;
+  bool is_lead_;
+#ifdef USE_ZOOKEEPER
+  zhandle_t* zh_;
+#endif  // USE_ZOOKEEPER
 };
 
 }  // namespace rpscc
