@@ -59,7 +59,7 @@ class Server {
   std::unordered_set<int32> agent_ids_;
   std::vector<float> parameters_;
   std::vector<std::vector<float>> backup_parameters_;
-  std::vector<std::queue<KeyValueList> > version_buffer_;
+  std::vector<std::queue<KeyValueList>> version_buffer_;
   std::deque<int32> finish_count_;
   std::queue<PullInfo> pull_request_;
   std::map<int32, int32> id_to_index_;
@@ -72,7 +72,7 @@ class Server {
   void ServePull(int32 sender_id, const Message_RequestMessage &request);
   void ServePush(int32 sender_id, const Message_RequestMessage &request);
   static void* HeartBeat(void* arg);
-  void Reconfigurate(const Message_ConfigMessage &config);
+  void Reconfigure(const Message_ConfigMessage &config);
   // UNKNOWN: Use a new thread or not?
   void RequestBackup();
   void Backup(const Message& msg);

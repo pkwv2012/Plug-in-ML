@@ -266,7 +266,7 @@ void Server::Start() {
     if (msg_recv.message_type() == Message_MessageType_config) {
       LOG(INFO) << "Reconfigurate";
       Message_ConfigMessage config_msg = msg_recv.config_msg();
-      Reconfigurate(config_msg);
+      Reconfigure(config_msg);
       continue;
     }
   }
@@ -285,18 +285,18 @@ void Server::ServePush(int32 sender_id,
     return;
   }
   // Chenbin: There may be a bug here, can bound errors be called here?
-  finish_count_[version_buffer_[id_to_index_[sender_id]].size()]++;
-  KeyValueList worker_update;
-  for (int32 i = 0; i < request.keys_size(); ++i) {
-    worker_update.AddPair(request.keys(i), request.values(i));
-    LOG(INFO) << "AddPair {" << request.keys(i) << ", " << request.values(i) << "}";
-  }
   if (version_buffer_[id_to_index_[sender_id]].size() >= consistency_bound_) {
     LOG(ERROR) << "Version_buffer_" << id_to_index_[sender_id]
                << " overfilled";
   } else {
     LOG(INFO) << "Push to version_buffer_[" << id_to_index_[sender_id]
               << "/" << version_buffer_.size() << "]";
+    finish_count_[version_buffer_[id_to_index_[sender_id]].size()]++;
+    KeyValueList worker_update;
+    for (int32 i = 0; i < request.keys_size(); ++i) {
+      worker_update.AddPair(request.keys(i), request.values(i));
+      LOG(INFO) << "AddPair {" << request.keys(i) << ", " << request.values(i) << "}";
+    }
     version_buffer_[id_to_index_[sender_id]].push(worker_update);
   }
   // Acknowledgement from server
@@ -337,7 +337,7 @@ void Server::ServePull(int32 sender_id,
    const Message_RequestMessage &request) {
   if (id_to_index_.find(sender_id) == id_to_index_.end()) {
     LOG(ERROR) << "Got pull request from worker " << sender_id
-      << ", which is unknown by the server.";
+      << ", which is unknown to the server.";
     return;
   }
   // Blocked when enough update is pushed but not yet processed
@@ -424,41 +424,74 @@ void* Server::HeartBeat(void* arg) {
 // when server receives a re-config order from masterm it will
 // change the system meta data stored.
 // Chenbin: This function will be rewritten in the future
-void Server::Reconfigurate(const Message_ConfigMessage &config_msg) {
-  agent_num_ = config_msg.worker_num();
+void Server::Reconfigure(const Message_ConfigMessage &config_msg) {
+  /*
+  int32 worker_num = 1;
+  int32 server_num = 2;
+  int32 key_range = 3;  // the number of features
+  repeated string node_ip_port = 4;
+  // partition = [0, key1, key2, ... , key_range]
+  // partition.size() = server_num + 1
+  repeated int32 partition = 5;  // used for consistent hashing
+  repeated int32 server_id = 6;
+  // actually there is not need to deliver the worker_id.
+  // But the communicator need the worker_id & Ip.
+  repeated int32 worker_id = 8;
+  repeated int32 master_id = 9;
+  int32 bound = 7;  // ASP = INF, BSP = 1
+  */
+  // The consisitency_bound and the local_id will not change.
+  int agent_num, key_range;  // should be assigned to the attributes
+  bool found_local;
+
+  // Respond to all agents to clear the pull_request_
+  RespondToAll();
+
+  agent_num = config_msg.worker_num();
   server_num_ = config_msg.server_num();
+  key_range = config_msg.key_range();
 
-  // Reconfiguration of sender's id mapping to ip-ports, where the id 0 is
-  // already added.
-  for (int32 i = 1; i < config_msg.node_ip_port_size(); ++i) {
-    sender_->AddIdAddr(i, config_msg.node_ip_port(i));
-  }
-
-  // Reconfigurate server ids, and record local parameter range from
-  // config_msg.partition.
-  // Note that config_msg.partition should be a array of length #server + 1.
-  // It's first element must be 0 and the last must be config_msg.key_range.
-  bool found_local = false;
+  LOG(INFO) << "Reconfigure server_ids_ servers_";
   server_ids_.clear();
   servers_.clear();
+  found_local = false;
   for (int32 i = 0; i < server_num_; ++i) {
     int32 server_i_id = config_msg.server_id(i);
     server_ids_.push_back(server_i_id);
     servers_.insert({server_i_id, i});
+    LOG(INFO) << "Add server: " << server_i_id << " " << i;
     if (server_i_id == local_id_) {
+      local_index_ = i;
       start_key_ = config_msg.partition(i);
       parameter_length_ = config_msg.partition(i + 1) - start_key_;
       found_local = true;
     }
   }
+  LOG(INFO) << "start_key_ = " << start_key_ << " param_length = " << parameter_length_;
   if (found_local == false) {
     LOG(ERROR) << "Nothing is found to be assigned to the server.";
-    exit(1);
+    return;
+  }
+
+  LOG(INFO) << "Reconfigure the sender_";
+  sender_.reset(new ZmqCommunicator());
+  sender_->Initialize(FLAGS_ring_size, true, 1024, FLAGS_buffer_size);
+  for (int32 i = 0; i < config_msg.node_ip_port_size(); ++i) {
+      sender_->AddIdAddr(i, config_msg.node_ip_port(i));
+      LOG(INFO) << "Server: AddIdAddr: " << i << " " << config_msg.node_ip_port(i);
+  }
+
+  // refresh master ids.
+  LOG(INFO) << "Reconfigure master_ids_";
+  master_ids_.clear();
+  for (int32 i = 0; i < config_msg.master_id_size(); ++i) {
+    master_ids_.push_back(config_msg.master_id(i));
   }
 
   // if an agent recorded in the server is not in the new configuration,
   // the agent is considered to be out of service. Therefore, server need
   // to first remove the agent's last updates.
+  LOG(INFO) << "Reconfigure agent_ids_";
   for (auto id : agent_ids_) {
     bool found = false;
     for (int32 i = 0; i < config_msg.worker_id_size(); ++i) {
@@ -470,22 +503,20 @@ void Server::Reconfigurate(const Message_ConfigMessage &config_msg) {
     if (!found) {
       for (int32 i = 0; i < version_buffer_[id_to_index_[id]].size(); ++i)
         finish_count_[i]--;
+      while (version_buffer_[id_to_index_[id]].size()) version_buffer_[id_to_index_[id]].pop();
+      id_to_index_.erase(id);
     }
   }
 
   // refresh agent id set
+  LOG(INFO) << "Reconfigure the agent_ids_";
   agent_ids_.clear();
   for (int32 i = 0; i < config_msg.worker_id_size(); ++i) {
     agent_ids_.insert(config_msg.worker_id(i));
   }
 
-  // refresh master ids.
-  master_ids_.clear();
-  for (int32 i = 0; i < config_msg.master_id_size(); ++i) {
-    master_ids_.push_back(config_msg.master_id(i));
-  }
-
   // refresh map from worker ID to version buffer index
+  LOG(INFO) << "Reconfigure the id_to_index_";
   for (int32 i = 0; i < agent_num_; ++i) {
     if (id_to_index_.find(config_msg.worker_id(i)) == id_to_index_.end()) {
       id_to_index_[config_msg.worker_id(i)] = version_buffer_.size();
@@ -565,11 +596,17 @@ void Server::RespondBackup(int32 server_id) {
 
 // Extend current parameters to more parameters
 void Server::ExtendParameter() {
+  LOG(INFO) << "Server: Before extension: " << "start_key_ = " << start_key_ << " values: = ";
+  for (auto v : parameters_)
+    LOG(INFO) << v;
   for (int i = 0; i < backup_size_; i++) {
     if (parameters_.size() == parameter_length_) break;
     parameters_.insert(parameters_.begin(), backup_parameters_[i].begin(),
                        backup_parameters_[i].end());
   }
+  LOG(INFO) << "Server: After extension: " << "start_key_ = " << start_key_ << " values: = ";
+  for (auto v : parameters_)
+    LOG(INFO) << v;
 }
 
 }  // namespace rpscc
