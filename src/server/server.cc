@@ -227,8 +227,9 @@ void Server::Start() {
 
   while (true) {
     std::string recv_str;
-    LOG(INFO) << "Server start receiving requests";
+    LOG(INFO) << "Server starts receiving requests";
     receiver_->Receive(&recv_str);
+    LOG(INFO) << "Server receives request";
     Message msg_recv;
     msg_recv.ParseFromString(recv_str);
     int32 sender_id = msg_recv.send_id();
@@ -264,7 +265,7 @@ void Server::Start() {
     }
 
     if (msg_recv.message_type() == Message_MessageType_config) {
-      LOG(INFO) << "Reconfigurate";
+      LOG(INFO) << "Reconfigure";
       Message_ConfigMessage config_msg = msg_recv.config_msg();
       Reconfigure(config_msg);
       continue;
@@ -526,6 +527,8 @@ void Server::Reconfigure(const Message_ConfigMessage &config_msg) {
 
   // Extend parameters if necessary
   ExtendParameter();
+
+  agent_num_ = agent_num;
 }
 
 // Send request message to other servers, requesting for there parameters
@@ -566,7 +569,7 @@ void Server::Backup(const Message& msg) {
   }
   for (int32 i = 0; i < request.values_size(); i++) {
     backup_parameters_[server_index][i] = request.values(i);
-    LOG(INFO) << "Backup index: " << server_index << "value: " << request.values(i);
+    LOG(INFO) << "Backup index: " << server_index << " value: " << request.values(i);
   }
 }
 

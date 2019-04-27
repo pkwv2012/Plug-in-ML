@@ -14,10 +14,8 @@ bool ZmqCommunicator::Initialize(int32 ring_size, bool is_sender,
   buffer_size_ = buffer_size;
 
   if (is_sender) {
-    //printf("Is sender\n");
     pthread_create(&add_fetch_, NULL, Consume, reinterpret_cast<void*>(this));
   } else {
-    //printf("Is receiver\n");
     pthread_create(&add_fetch_, NULL, Produce, reinterpret_cast<void*>(this));
   }
 
@@ -36,7 +34,6 @@ int32 ZmqCommunicator::Send(int32 dst_id, const char* const message,
   len += offset;
   
   fifo_ring_.Add(mix_message, len);
-  //printf("Add to ring: %s | size = %d\n", mix_message, len);
   return len;
 }
 int32 ZmqCommunicator::Send(int32 dst_id, const std::string& message) {
@@ -46,7 +43,6 @@ int32 ZmqCommunicator::Send(int32 dst_id, const std::string& message) {
 
 int32 ZmqCommunicator::Receive(char* message, const int32 max_size) {
   int len = fifo_ring_.Fetch(message, max_size);
-  //printf("Fetch from ring: %s | size = %d\n", message, len);
   return len;
 }
 int32 ZmqCommunicator::Receive(std::string* message) {
@@ -62,12 +58,10 @@ void* ZmqCommunicator::Produce(void* arg) {
   ZmqCommunicator* zc = reinterpret_cast<ZmqCommunicator*>(arg);
   static char* message = new char[zc->buffer_size_];
   static int32 len;
-  //printf("Start receiving.\n");
 
   while (1) {
     len = zc->send_recv_.Receive(message, zc->buffer_size_);
     zc->fifo_ring_.Add(message, len);
-    //printf("Receive: %s, %d\n", message, len);
     sleep(1);
   }
 }
@@ -87,7 +81,6 @@ void* ZmqCommunicator::Consume(void* arg) {
     // Extract the dst_id and message from the mix_message
     // Calculate the true message's length
     sscanf(mix_message, "%d,", &dst_id);
-    //printf("dst_id = %d\n", dst_id);
     for (int32 i = 0; i < 12; i++)
       if (mix_message[i] == ',') {
         len = len - i - 1;
@@ -98,23 +91,22 @@ void* ZmqCommunicator::Consume(void* arg) {
     std::map<int32, std::string>::iterator iter =
                                   zc->id_to_addr_.find(dst_id);
     if (iter == zc->id_to_addr_.end()) {
-      printf("Destination Node id error: dst_id = %d\n", dst_id);
-      printf("Can not send this message to destination.");
+      LOG(ERROR) << "Destination Node id error: dst_id = " << dst_id;
+      LOG(ERROR) << "Can not send this message to destination.";
       continue;
     }
     zc->send_recv_.Send(iter->second, message, len);
-    //printf("Send message: %s | size = %d\n", message, len);
     sleep(1);
   }
 }
 
 bool ZmqCommunicator::AddIdAddr(int32 id, std::string addr) {
   if (id_to_addr_.find(id) != id_to_addr_.end()) {
-    printf("This id already exists in the id_to_addr_\n");
+    LOG(INFO) << "This id already exists in the id_to_addr_";
     return false;
   } else {
     id_to_addr_.insert(std::make_pair(id, addr));
-    printf("AddIdAddr: id = %d | addr = %s\n", id, addr.c_str());
+    LOG(INFO) << "AddIdAddr: id = " << id << " | addr = " << addr.c_str();
     return true;
   }
 }

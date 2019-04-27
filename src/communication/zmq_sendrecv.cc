@@ -54,7 +54,7 @@ int32 ZmqSendRecv::Send(std::string dst_addr, const char* const message,
     mapper_.insert(std::make_pair(dst_addr, sender_));
     sendrecv_ = sender_;
   } else {
-    printf("Use existed socket.\n");
+    LOG(INFO) << "Use existed socket";
     sendrecv_ = iter->second;
   }
   // Start sending message
@@ -78,10 +78,10 @@ int32 ZmqSendRecv::CloseSocket(std::string dst_addr) {
   int32 res = 0;
   std::map<std::string, void*>::iterator iter = mapper_.find(dst_addr);
   if (iter == mapper_.end()) {
-    printf("Close a nonexistent socket\n");
+    LOG(INFO) << "Close a nonexistent socket";
     res = -1;
   } else {
-    printf("Try to close socket\n");
+    LOG(INFO) << "Try to close socket";
     res = zmq_close(iter->second);
     mapper_.erase(dst_addr);
   }
