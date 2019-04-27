@@ -109,6 +109,7 @@ if __name__ == '__main__':
     alone = True
     if len(sys.argv) >= 2:
         num_worker = int(sys.argv[1])
+        alone = False
     else:
         num_worker = 1
     data_path = '../../YearPredictionMSD.txt'
