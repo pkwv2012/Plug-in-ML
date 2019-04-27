@@ -9,6 +9,8 @@
 #include "gflags/gflags.h"
 #include "src/master/task_config.h"
 #include "src/util/logging.h"
+#include "task_config.h"
+
 
 namespace rpscc {
 
@@ -46,6 +48,10 @@ Message_ConfigMessage *TaskConfig::ToMessage() {
   std::sort(temp.begin(), temp.end());
   for (auto pr: temp) {
     config_msg->add_node_ip_port(pr.second);
+  }
+  // using set, instead of add
+  for (auto pr: id_to_addr_) {
+    config_msg->set_node_ip_port(pr.first, pr.second);
   }
   for (auto id : server_id_) {
     config_msg->add_server_id(id);
@@ -101,11 +107,11 @@ void TaskConfig::AppendAgent(const std::string &ip, const int32_t &port) {
 }
 
 void TaskConfig::GeneratePartition() {
-  partition_.push_back(0);
-  for (int i = 1; i < server_num_; ++ i) {
+  // partition_.push_back(0);
+  for (int i = 0; i < server_num_; ++ i) {
     partition_.push_back(distribution_->operator()(generator_));
   }
-  partition_.push_back(key_range_);
+  // partition_.push_back(key_range_);
   std::sort(partition_.begin(), partition_.end());
 }
 
@@ -130,6 +136,23 @@ void TaskConfig::AppendMaster(const std::string &ip_port) {
   master_id_.push_back(node_id_);
   id_to_addr_[node_id_] = ip_port;
   ++ node_id_;
+}
+
+void TaskConfig::FixConfig(const std::vector<int> &dead_node) {
+  if (dead_node.size() == 0) return;
+  std::unique_lock<std::mutex> ul(mu_);
+  config_changed_ = true;
+  for (auto node_id : dead_node) {
+    if (IsAgentId(node_id)) {
+      auto iter = std::find(agent_id_.begin(), agent_id_.end(), node_id);
+      agent_id_.erase(iter);
+    } else if (IsServerId((node_id))) {
+      auto iter = std::find(server_id_.begin(), server_id_.end(), node_id);
+      int32_t index = iter - server_id_.begin();
+      server_id_.erase(iter);
+      partition_.erase(partition_.begin() + index);
+    }
+  }
 }
 
 }  // namespace rpscc

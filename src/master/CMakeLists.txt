@@ -1,14 +1,13 @@
 
-# use zookeeper or not
-# add_definitions("-DUSE_ZOOKEEPER")
+if (USE_ZOO)
+  target_link_libraries(master zookeeper_mt)
+  # use zookeeper or not
+  add_definitions("-DUSE_ZOOKEEPER")
+endif(USE_ZOO)
 
 add_library(master master.cc task_config.cc)
 
 target_link_libraries(master zmq_communicator gflags message logging)
-
-if (USE_ZOO)
-  target_link_libraries(master zookeeper_mt)
-endif(USE_ZOO)
 
 add_executable(master_main master_main.cc)
 

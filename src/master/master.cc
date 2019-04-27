@@ -15,11 +15,11 @@
 
 namespace rpscc {
 
-DEFINE_int32(heartbeat_timeout, 30, "The maximum time to decide "
-  "whether the node is offline");
+DEFINE_int32(heartbeat_timeout, 30, "The maximum time(seconds) to decide "
+                                    "whether the node is offline.");
 DEFINE_int32(listen_port, 16666, "The listening port of cluster.");
-DEFINE_int32(heartbeat_gap, 3, "The heartbeat gap.");
-DEFINE_int32(detect_dead_node, 5, "The time gap to detect dead node.");
+DEFINE_int32(heartbeat_gap, 3, "The heartbeat gap(seconds).");
+DEFINE_int32(detect_dead_node, 5, "The time(seconds) gap to detect dead node.");
 DEFINE_int32(max_cluster_node, 10000, "The maximum cluster number.");
 DEFINE_string(zookeeper_hosts, "127.0.0.1:2181", ""
               "Comma separated host:port pairs, "
@@ -92,16 +92,6 @@ void Master::init_zookeeper() {
 
 #endif
 
-void Master::Initialize(const int16 &listen_port) {
-#ifdef USE_ZOOKEEPER
-  init_zookeeper();
-#endif  // USE_ZOOKEEPER
-  this->sender_.reset(new ZmqCommunicator());
-  this->sender_->Initialize(16, true, listen_port);
-  this->receiver_.reset(new ZmqCommunicator());
-  this->receiver_->Initialize(16, false, listen_port);
-}
-
 void Master::MainLoop() {
   LOG(INFO) << "This master is "
             << (is_lead_? "" : "not ")
@@ -112,7 +102,6 @@ void Master::MainLoop() {
     }
     return;
   }
-  std::cout << "Main loop";
   bool terminated = false;
   while (!terminated) {
     std::string msg_str;
@@ -155,12 +144,14 @@ void Master::MainLoop() {
                 ip + ":" + std::to_string(std::stoi(port) + 1));
           }
           DeliverConfig();
-          //std::thread heartbeat_thread(
-          //  std::bind(&Master::DeliverHeartbeatLoop, this));
-          //time_t cur_time = time(NULL);
-          //for (int i = 0; i < config_.get_node_ip().size(); ++i) {
-          //  alive_node_[i] = cur_time;
-          //}
+          std::thread heartbeat_thread(
+            std::bind(&Master::DeliverHeartbeatLoop, this));
+          auto cur_time = std::chrono::system_clock::now();
+          for (int i = 0; i < config_.get_node_ip().size(); ++i) {
+            alive_node_[i] = cur_time;
+          }
+          std::thread detect_dead_node (
+            std::bind(&Master::DetectDeadNode, this));
         }
         LOG(INFO) << "worker_num=" << config_.worker_num()
                   << "server_num=" << config_.server_num()
@@ -221,7 +212,7 @@ void Master::ProcessHeartbeatMsg(const Message& msg) {
   auto heartbeat_msg = msg.heartbeat_msg();
   CHECK(heartbeat_msg.is_live());
   auto send_id = msg.send_id();
-  time_t cur_time = time(NULL);
+  auto cur_time = std::chrono::system_clock::now();
   // CHECK(alive_node_.find(send_id) != alive_node_.end());
   alive_node_[send_id] = cur_time;
   LOG(INFO) << "Heartbeat from " << send_id << ", ip = "
@@ -230,9 +221,11 @@ void Master::ProcessHeartbeatMsg(const Message& msg) {
 
 std::vector<int> Master::GetDeadNode() {
   std::vector<int> dead_node;
-  auto cur_time = time(NULL);
+  auto cur_time = std::chrono::system_clock::now();
   for (const auto& pr : alive_node_) {
-    if (pr.second + FLAGS_heartbeat_timeout < cur_time) {
+    if (pr.second
+        + std::chrono::seconds(FLAGS_heartbeat_timeout)
+        < cur_time) {
       dead_node.push_back(pr.first);
     }
   }
@@ -275,12 +268,20 @@ void Master::DeliverHeartbeat() {
   Message_HeartbeatMessage* heartbeat_msg = new Message_HeartbeatMessage();
   heartbeat_msg->set_is_live(true);
   msg->set_allocated_heartbeat_msg(heartbeat_msg);
-  LOG(INFO) << "Heartbeat right" << std::endl;
-  for (int32_t i = 0; i < config_.get_node_ip().size(); ++i) {
-    msg->set_recv_id(i + FLAGS_max_cluster_node);
-    LOG(INFO) << i << std::endl;
-    auto send_byte = sender_->Send(i, msg->SerializeAsString());
-    LOG(INFO) << "Send to " << i << " heartbeat of " << send_byte;
+  if (config_.config_changed()) {
+    msg->set_allocated_config_msg(config_.ToMessage());
+    config_.set_config_changed(false);
+  }
+  for (auto id : config_.agent_id()) {
+    msg->set_recv_id(id);
+    auto send_byte = sender_->Send(id + FLAGS_max_cluster_node,
+                                   msg->SerializeAsString());
+    LOG(INFO) << "Send to agent " << id << " heartbeat of " << send_byte;
+  }
+  for (auto id : config_.server_id()) {
+    msg->set_recv_id(id);
+    auto send_byte = sender_->Send(id, msg->SerializeAsString());
+    LOG(INFO) << "Send to server" << id << " heartbeat of " << send_byte;
   }
   delete msg;
 }
@@ -289,16 +290,25 @@ void Master::DeliverHeartbeatLoop() {
   while (1) {
     DeliverHeartbeat();
     std::this_thread::sleep_for(
-        std::chrono::microseconds(FLAGS_heartbeat_gap * 1000));
+        std::chrono::seconds(FLAGS_heartbeat_gap));
   }
 }
 
 void Master::DetectDeadNode() {
   while (1) {
     auto dead_node = GetDeadNode();
+    // Reconfig the cluster
+    if (dead_node.size() > 0) {
+      // Log dead node.
+      auto& logger = LOG(INFO);
+      for (auto node: dead_node) {
+        logger << node << ":" << config_.GetIp(node) << " ";
+      }
+      config_.FixConfig(dead_node);
+    }
     // If there are dead_node, master should restart the node.
     std::this_thread::sleep_for(
-        std::chrono::microseconds(FLAGS_detect_dead_node * 1000));
+        std::chrono::seconds(FLAGS_detect_dead_node));
   }
 }
 

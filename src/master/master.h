@@ -6,6 +6,7 @@
 #ifndef SRC_MASTER_MASTER_H_
 #define SRC_MASTER_MASTER_H_
 
+#include <chrono>
 #include <mutex>
 #include <string>
 #include <vector>
@@ -90,7 +91,8 @@ class Master {
   TaskConfig config_;
   std::unique_ptr<Communicator> sender_;
   std::unique_ptr<Communicator> receiver_;
-  std::unordered_map<int, time_t> alive_node_;
+  std::unordered_map<int,
+                     decltype(std::chrono::system_clock::now())> alive_node_;
   std::unordered_set<int32_t> terminated_node_;
   bool is_lead_;
 #ifdef USE_ZOOKEEPER

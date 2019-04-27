@@ -59,6 +59,9 @@ class TaskConfig {
   }
 
   // Generate partition
+  // The length of partition is server_num_,
+  // meaning that using (server_num_ ) numbers to split [0, key_range)
+  // into server_num_ intervals.
   void GeneratePartition();
 
   std::unordered_map<int32_t, std::string>& get_id_to_addr() {
@@ -69,6 +72,34 @@ class TaskConfig {
   int32_t server_num() { return server_num_; }
   std::vector<int32_t>& agent_id() { return agent_id_; }
   std::vector<int32_t>& server_id() { return server_id_; }
+
+  std::string GetIdAddr(const int32_t& id) {
+    auto iter = id_to_addr_.find(id);
+    if (iter == id_to_addr_.end()) {
+      return std::string();
+    }
+    return iter->second;
+  }
+
+  // remove dead node from configuration.
+  void FixConfig(const std::vector<int>& dead_node);
+
+  bool IsServerId(const int32_t& id) {
+    return std::find(server_id_.begin(), server_id_.end(), id) != server_id_.end();
+  }
+
+  bool IsAgentId(const int32_t& id) {
+    return std::find(agent_id_.begin(), agent_id_.end(), id) != agent_id_.end();
+  }
+
+  bool config_changed() {
+    return config_changed_;
+  }
+
+  void set_config_changed(bool v) {
+    std::unique_lock<std::mutex> ul(mu_);
+    config_changed_ = v;
+  }
 
  private:
   int32 worker_num_;
@@ -90,6 +121,8 @@ class TaskConfig {
   std::unordered_map<std::string, int32_t> addr_to_id_;
   int32 bound_;
   int32_t node_id_ = 0;
+  std::mutex mu_;
+  bool config_changed_ = false;
 
   static std::default_random_engine generator_;
   static std::unique_ptr<std::uniform_int_distribution<int>> distribution_;
