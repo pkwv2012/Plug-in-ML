@@ -4,7 +4,11 @@
 
 add_library(master master.cc task_config.cc)
 
-target_link_libraries(master zmq_communicator gflags message logging zookeeper_mt)
+target_link_libraries(master zmq_communicator gflags message logging)
+
+if (USE_ZOO)
+  target_link_libraries(master zookeeper_mt)
+endif(USE_ZOO)
 
 add_executable(master_main master_main.cc)
 
@@ -16,6 +20,7 @@ target_link_libraries(master_test gtest_main message zmq_communicator master gfl
 add_executable(test_process test_process.cc)
 target_link_libraries(test_process message zmq_communicator master gflags pthread gtest logging)
 
-add_executable(zk_test zookeeper_test.cc)
-
-target_link_libraries(zk_test zookeeper_mt)
+if (USE_ZOO)
+  add_executable(zk_test zookeeper_test.cc)
+  target_link_libraries(zk_test zookeeper_mt)
+endif(USE_ZOO)

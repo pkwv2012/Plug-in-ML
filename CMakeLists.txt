@@ -32,6 +32,12 @@ link_directories("/usr/local/opt/python/Frameworks/Python.framework/Versions/3.7
 message(${PROJECT_BINARY_DIR})
 message(${PROJECT_SOURCE_DIR})
 
+# use zookeeper or not
+# set(USE_ZOO "yes")
+
+# generate shared memory test
+# set(SHARED_MEMORY_TEST "yes")
+
 add_subdirectory(src/message)
 add_subdirectory(src/communication)
 add_subdirectory(src/master)
