@@ -19,6 +19,7 @@ DEFINE_int32(worker_num, 1, "The number of worker.");
 DEFINE_int32(server_num, 1, "The number of server.");
 DEFINE_int32(key_range, 0, "The total number of features.");
 DEFINE_int32(bound, 0, "The definition of consistency.");
+DEFINE_int32(backup_size, 0, "The number of backup server.");
 
 std::default_random_engine TaskConfig::generator_;
 std::unique_ptr<std::uniform_int_distribution<int>> TaskConfig::distribution_;
@@ -31,6 +32,7 @@ void rpscc::TaskConfig::Initialize(const std::string &config_file) {
   bound_ = FLAGS_bound;
   // [1, key_range - 2], because we should not generate
   // index 0 and index key_range - 2
+  backup_size_ = FLAGS_backup_size;
   distribution_.reset(
     new std::uniform_int_distribution<int>(1, key_range_ - 2));
 }
@@ -44,6 +46,7 @@ Message_ConfigMessage *TaskConfig::ToMessage() {
   config_msg->set_server_num(server_num_);
   config_msg->set_bound(bound_);
   config_msg->set_key_range(key_range_);
+  config_msg->set_backup_size(backup_size_);
   // assert(server_ip_.size() == server_port_.size());
   std::vector<std::pair<int32_t, std::string>> temp(id_to_addr_.begin(),
     id_to_addr_.end());

@@ -109,6 +109,7 @@ class TaskConfig {
   int32 worker_num_;
   int32 server_num_;
   int32 key_range_;
+  int32 backup_size_;
   std::vector <int32_t> partition_;
   std::vector <int32_t> server_id_;
   std::vector <int32_t> agent_id_;

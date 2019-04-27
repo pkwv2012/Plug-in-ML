@@ -9,6 +9,7 @@
 #include <chrono>
 #include <mutex>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "src/communication/communicator.h"

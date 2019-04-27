@@ -30,9 +30,10 @@ message Message {
     int32 server_num = 2;
     int32 key_range = 3;  // the number of features
     repeated string node_ip_port = 4;
-    // partition = [0, key1, key2, ... , key_range]
-    // partition.size() = server_num + 1
+    // partition = [key0, key1, key2, ... , key(n-1)]
+    // partition.size() = server_num
     repeated int32 partition = 5;  // used for consistent hashing
+    int32 backup_size = 10;  // used for server backup
     repeated int32 server_id = 6;
     // actually there is not need to deliver the worker_id.
     // But the communicator need the worker_id & Ip.

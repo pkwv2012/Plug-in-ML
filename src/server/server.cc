@@ -97,7 +97,7 @@ bool Server::Initialize() {
   }
 
   // Chenbin: Initialization of backup_parameters_
-  backup_size_ = 2;  // TODO: Get backup_size from the config message
+  backup_size_ = config_msg.backup_size();  // TODO: Get backup_size from the config message
   if (backup_size_ < 0 || backup_size_ >= server_num_) {
     LOG(ERROR) << "backup_size_ is wrong";
     return false;
