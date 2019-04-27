@@ -84,7 +84,8 @@ void ServerSimulator(std::string master_addr, int32_t server_port) {
   fs << msg_str;
   fs.close();
   int32_t len = sender->Send(0, msg_str);
-  LOG(INFO) << "Server send register msg done. Total bytes " << len << std::endl;
+  LOG(INFO) << "Server send register msg done. Total bytes "
+            << len << std::endl;
   std::string msg_got;
   receiver->Receive(&msg_got);
   LOG(INFO) << "Server receive msg done." << std::endl;
@@ -108,7 +109,6 @@ int main() {
   FLAGS_listen_port = 16666;
   FLAGS_worker_num = 1;
   FLAGS_server_num = 1;
-  //master->Initialize(FLAGS_master_listen_port);
   std::string master_addr = "127.0.0.1:16666";
   int32_t agent_port = 15555, server_port = 17777;
   int pid = fork();
@@ -129,10 +129,12 @@ int main() {
     return 0;
   }
   using namespace std::placeholders;
-  //std::thread master_thread(std::bind(&Master::MainLoop, master));
-  //std::thread agent_thread(std::bind(&AgentSimulator, master_addr, agent_port));
-  //std::thread server_thread(std::bind(&ServerSimulator, master_addr, server_port));
-  //master_thread.join();
-  //agent_thread.join();
-  //server_thread.join();
+  // std::thread master_thread(std::bind(&Master::MainLoop, master));
+  // std::thread agent_thread(
+  //     std::bind(&AgentSimulator, master_addr, agent_port));
+  // std::thread server_thread(
+  //     std::bind(&ServerSimulator, master_addr, server_port));
+  // master_thread.join();
+  // agent_thread.join();
+  // server_thread.join();
 }

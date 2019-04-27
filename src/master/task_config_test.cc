@@ -6,6 +6,5 @@
 
 TEST(TaskConfig, Generator) {
   TaskConfig task_config;
-
 }
 

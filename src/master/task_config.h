@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <random>
+#include <string>
 #include <vector>
 
 #include "src/message/message.pb.h"
@@ -55,7 +56,8 @@ class TaskConfig {
   }
 
   bool IsMasterId(const int32_t& id) const {
-    return std::find(master_id_.begin(), master_id_.end(), id) != master_id_.end();
+    return std::find(master_id_.begin(), master_id_.end(), id)
+           != master_id_.end();
   }
 
   // Generate partition
@@ -85,11 +87,13 @@ class TaskConfig {
   void FixConfig(const std::vector<int>& dead_node);
 
   bool IsServerId(const int32_t& id) {
-    return std::find(server_id_.begin(), server_id_.end(), id) != server_id_.end();
+    return std::find(server_id_.begin(), server_id_.end(), id)
+           != server_id_.end();
   }
 
   bool IsAgentId(const int32_t& id) {
-    return std::find(agent_id_.begin(), agent_id_.end(), id) != agent_id_.end();
+    return std::find(agent_id_.begin(), agent_id_.end(), id)
+           != agent_id_.end();
   }
 
   bool config_changed() {
@@ -105,15 +109,9 @@ class TaskConfig {
   int32 worker_num_;
   int32 server_num_;
   int32 key_range_;
-  //std::vector <std::string> server_ip_;
-  //std::vector <int32_t> server_port_;
-  //std::vector <std::string> agent_ip_;
-  //std::vector <int32_t> agent_port_;
   std::vector <int32_t> partition_;
   std::vector <int32_t> server_id_;
   std::vector <int32_t> agent_id_;
-  //std::vector <std::string> node_ip_;
-  //std::vector <int32_t> node_port_;
   std::vector <int32_t> master_id_;
   // id_to_addr is the most important hash table,
   // it will be prefer used.

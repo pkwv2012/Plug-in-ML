@@ -45,7 +45,8 @@ static int CreateZookeeperNode(zhandle_t* zh) {
                       node_value.c_str(),
                       5,
                       &CREATE_ONLY,
-                      ZOO_EPHEMERAL,  // create ephemeral node for leader selection
+                      ZOO_EPHEMERAL,  // create ephemeral node
+                                      // for leader selection
                       buffer,
                       sizeof(buffer)-1);
   LOG(INFO) << "zoo_create: " << rc << std::endl;
@@ -67,7 +68,7 @@ static void ZkCallback(zhandle_t* zh, int type, int state,
   if (spath == node_name) {
     auto rc = CreateZookeeperNode(zh);
     if (rc == 0) {
-      // TODO: Do what master lead should do.
+      // TODO(peikai): Do what master lead should do.
       Master::Get()->set_is_lead(true);
       Master::Get()->MainLoop();
     }  // Otherwise, do nothing
@@ -85,7 +86,7 @@ void Master::init_zookeeper() {
   // 2. create zookeeper ephemeral node;
   int rc = CreateZookeeperNode(zh_);
   if (rc == 0) {
-    // TODO: Do what master lead should do.
+    // TODO(peikai): Do what master lead should do.
     is_lead_ = true;
   }   // Otherwise, do nothing.
 }
@@ -150,7 +151,7 @@ void Master::MainLoop() {
           for (int i = 0; i < config_.get_node_ip().size(); ++i) {
             alive_node_[i] = cur_time;
           }
-          std::thread detect_dead_node (
+          std::thread detect_dead_node(
             std::bind(&Master::DetectDeadNode, this));
         }
         LOG(INFO) << "worker_num=" << config_.worker_num()
@@ -301,7 +302,7 @@ void Master::DetectDeadNode() {
     if (dead_node.size() > 0) {
       // Log dead node.
       auto& logger = LOG(INFO);
-      for (auto node: dead_node) {
+      for (auto node : dead_node) {
         logger << node << ":" << config_.GetIp(node) << " ";
       }
       config_.FixConfig(dead_node);

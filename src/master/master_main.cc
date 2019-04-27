@@ -31,7 +31,6 @@ int main(int argc, char** argv) {
   signal(SIGINT, SegHandler);
   gflags::ParseCommandLineFlags(&argc, &argv, false);
   rpscc::Master* master = rpscc::Master::Get();
-  //master->Initialize(FLAGS_master_listen_port);
   master->Initialize(FLAGS_master_ip_port);
   master->MainLoop();
   return 0;
