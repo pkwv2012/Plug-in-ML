@@ -274,6 +274,8 @@ void Master::DeliverHeartbeat() {
   if (config_.config_changed()) {
     msg->set_allocated_config_msg(config_.ToMessage());
     config_.set_config_changed(false);
+  } else {
+    msg->clear_config_msg();
   }
   for (auto id : config_.agent_id()) {
     msg->set_recv_id(id);

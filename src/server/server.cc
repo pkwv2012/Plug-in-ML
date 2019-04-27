@@ -378,7 +378,11 @@ void Server::ServePull(int32 sender_id,
       Message_RequestMessage_RequestType_key_value);
     for (int32 i = 0; i < request.keys_size(); ++i) {
       reply_msg->add_keys(request.keys(i));
-      reply_msg->add_values(parameters_[request.keys(i) - start_key_]);
+      int32 index = request.keys(i) - start_key_;
+      if (index < 0) {
+        index += key_range_;
+      }
+      reply_msg->add_values(parameters_[index]);
     }
     msg_send->set_message_type(Message_MessageType_request);
     msg_send->set_allocated_request_msg(reply_msg);
