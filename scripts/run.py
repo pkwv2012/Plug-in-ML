@@ -42,7 +42,7 @@ if __name__ == '__main__':
         copy_progs.append(prog_thread)
         # prog_thread.start()
 
-    worker_num = 5
+    worker_num = 4
     train_file = 'YearPredictionMSD.txt.train'
     with open('../' + train_file, 'r') as fin:
         fout = []
@@ -58,7 +58,7 @@ if __name__ == '__main__':
         for i in range(worker_num):
             fout[i].close()
 
-    agent_list = ['ip6-server11', 'ip6-server16', 'ip6-server13', 'ip6-server14', 'ip6-server12', ]
+    agent_list = ['ip6-server11', 'ip6-server12', 'ip6-server13', 'ip6-server14', 'ip6-server16']
     net_interface = ['eno2', 'eno2', 'eno2', 'eno2', 'eno2']
 
     for i in range(worker_num):

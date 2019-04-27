@@ -1,3 +1,7 @@
 # do not commit the generated protobuf files.
 *.pb.h
 *.pb.cc
+*speedup*
+*status*
+*converage*
+YearPredictionMSD*
