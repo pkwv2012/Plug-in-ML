@@ -78,8 +78,7 @@ void Mast() {
 
     config_msg->add_partition(0);
     config_msg->add_partition(3);
-    config_msg->add_partition(5);
-    
+
     config_msg->add_server_id(2);
     config_msg->add_server_id(3);
     config_msg->add_worker_id(1);
@@ -130,7 +129,6 @@ void Mast() {
 
       config_msg->add_partition(0);
       config_msg->add_partition(3);
-      config_msg->add_partition(5);
 
       config_msg->add_server_id(2);
       config_msg->add_server_id(3);
@@ -163,7 +161,7 @@ void Mast() {
       config_msg->add_node_ip_port("127.0.0.1:5005");
 
       config_msg->add_partition(0);
-      config_msg->add_partition(5);
+      config_msg->add_partition(3);
 
       config_msg->add_server_id(2);
       config_msg->add_worker_id(1);

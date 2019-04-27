@@ -11,6 +11,9 @@ target_link_libraries(agent_main gflags agent)
 add_executable(agent_gtest agent_gtest.cc)
 target_link_libraries(agent_gtest gtest_main agent)
 
+add_executable(partition_test partition_test.cc)
+target_link_libraries(partition_test gtest_main agent)
+
 if (UNIX AND NOT APPLE)
   target_link_libraries(agent_test rt)
   target_link_libraries(agent_main rt)

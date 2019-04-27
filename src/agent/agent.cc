@@ -125,13 +125,13 @@ bool Agent::Initialize(std::string para_fifo_name,
        << server_num_ << " key_range_ = " << key_range_ << endl;
 
   // 3_3.Add <server_id, server_addr> pairs to the sender_'s <Id, Addr> map.
-  server_id_list_.clear();
+  server_ids_.clear();
   for (int32 i = 0; i < server_num_; i++) {
     int32 server_i_id = config_msg.server_id(i);
-    server_id_list_.push_back(server_i_id);
+    server_ids_.push_back(server_i_id);
     cout << "server_id = " << server_i_id;
     std::string server_i_ip_port = config_msg.node_ip_port(server_i_id);
-    
+
     cout << " ip_port = " << server_i_ip_port
          << endl;
     
@@ -144,8 +144,8 @@ bool Agent::Initialize(std::string para_fifo_name,
   // 3_4.Initialize the partition_.
   cout << "3_4.Initialize the partition_." << endl;
 
-  int32* part_vec = new int32[server_num_ + 1];
-  config_msg.mutable_partition()->ExtractSubrange(0, server_num_ + 1,
+  int32* part_vec = new int32[server_num_];
+  config_msg.mutable_partition()->ExtractSubrange(0, server_num_,
                                                   part_vec);
   partition_.Initialize(key_range_, server_num_, part_vec);
   delete[] part_vec;
@@ -210,7 +210,7 @@ bool Agent::Start() {
 }
 
 bool Agent::AgentWork() {
-  cout << "Agent: Start AgentWork" << endl;  
+  cout << "Agent: Start AgentWork" << endl;
   int32 signal_type;
   while (true) {
     // Wait for worker's signal
@@ -326,12 +326,12 @@ bool Agent::Push() {
                               gradients_.keys + gradients_.size), 
                               start, server_id);
     cout << "Agent_server_id_list" << endl;
-    for (auto item : server_id_list_) {
+    for (auto item : server_ids_) {
       cout << item << ", ";
     }
     cout << endl;
     cout << "Agent: start, end = " << start << ", " << end << endl;
-    server_id = server_id_list_[server_id]; 
+    server_id = server_ids_[server_id];
     cout << "Agent: server_id = " << server_id << endl;
     msg_send.clear_request_msg();
     request_msg_ptr = new Message_RequestMessage();
@@ -382,10 +382,10 @@ bool Agent::Pull() {
   size = parameters_.size;
   while (start < size) {
     end = partition_.NextEnding(std::vector<int>(parameters_.keys,
-                              parameters_.keys + parameters_.size), 
+                              parameters_.keys + parameters_.size),
                               start, server_id);
     cout << "Agent: start, end = " << start << ", " << end << endl;
-    server_id = server_id_list_[server_id]; 
+    server_id = server_ids_[server_id];
     cout << "Agent: server_id = " << server_id << endl;
     server_set.insert(server_id);
     msg_send_recv.clear_request_msg();
@@ -565,23 +565,23 @@ void Agent::Reconfigurate() {
        << " agent_num_ = " << agent_num_ << " server_num_ = "
        << server_num_ << " key_range_ = " << key_range_ << endl;
 
-  // 2.Add <server_id, server_addr> pairs to the sender_'s <Id, Addr> map.
-  server_id_list_.clear();
+  // 2.Refresh the server_ids_, master_ids_ and the sender_
+  server_ids_.clear();
   for (int32 i = 0; i < server_num_; i++) {
-    int32 server_i_id = config_msg.server_id(i);
-    server_id_list_.push_back(server_i_id);
-    cout << "server_id = " << server_i_id;
-    std::string server_i_ip_port = config_msg.node_ip_port(server_i_id);
+    server_ids_.push_back(config_msg.server_id(i));}
+  master_ids_.clear();
+  for (int32 i = 0; i < config_msg.master_id_size(); ++i) {
+    master_ids_.push_back(config_msg.master_id(i));
+  }
 
-    cout << " ip_port = " << server_i_ip_port
-         << endl;
-    if (!sender_->CheckIdAddr(server_i_id, server_i_ip_port)) {
-      sender_->DeleteId(server_i_id);
-      sender_->AddIdAddr(server_i_id, server_i_ip_port);
+  for (int32 i = 0; i < config_msg.node_ip_port_size(); i++) {
+    if (!sender_->CheckIdAddr(i, config_msg.node_ip_port(i))) {
+      sender_->DeleteId(i);
+      sender_->AddIdAddr(i, config_msg.node_ip_port(i));
     }
   }
 
-  // 3.Reinitialize the partition_.
+  // 4.Reinitialize the partition_.
   int32* part_vec = new int32[server_num_ + 1];
   config_msg.mutable_partition()->ExtractSubrange(0, server_num_ + 1,
                                                   part_vec);
@@ -589,10 +589,10 @@ void Agent::Reconfigurate() {
   partition_.Initialize(key_range_, server_num_, part_vec);
   delete[] part_vec;
 
-  // 4.Set the epoch_num_ to 0
+  // 5.Set the epoch_num_ to 0
   epoch_num_ = 0;
 
-  // 5.Set the reconfig_msg_ to NULL
+  // 6.Set the reconfig_msg_ to NULL
   delete reconfig_msg_;
   reconfig_msg_ = NULL;
 }

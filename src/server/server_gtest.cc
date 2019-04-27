@@ -72,8 +72,6 @@ void SimulOuter() {
     config_msg->add_partition(0);
     config_msg->add_partition(3);
     config_msg->add_partition(5);
-    config_msg->add_partition(7);
-    config_msg->add_partition(10);
 
     config_msg->add_server_id(2);
     config_msg->add_server_id(3);
@@ -158,15 +156,13 @@ void SimulOuter() {
     // config_msg->add_node_ip_port("127.0.0.1:5007");  // Server 4
     // config_msg->add_node_ip_port("127.0.0.1:5008");  // Server 5
 
-    config_msg->add_partition(0);
     config_msg->add_partition(3);
     config_msg->add_partition(5);
-    config_msg->add_partition(7);
-    // config_msg->add_partition(9);
-    config_msg->add_partition(10);
+    // config_msg->add_partition(7);
+    // config_msg->add_partition(10);
 
-    config_msg->add_server_id(2);
     config_msg->add_server_id(3);
+    config_msg->add_server_id(2);
     // config_msg->add_server_id(4);
     // config_msg->add_server_id(5);
 
@@ -264,13 +260,13 @@ TEST(ServerTest, TestServer) {
   int server3_id, server4_id, server2_id;
   server3_id = fork();
   if (server3_id == 0) {
-    SimulServer(3, 5006, 5, 2);
+    SimulServer(3, 5006, 3, 2);
     return;
   }
 
   server4_id = fork();
   if (server4_id == 0) {
-    SimulServer(4, 5007, 7, 3);
+    SimulServer(4, 5007, 5, 5);
     return;
   }
 

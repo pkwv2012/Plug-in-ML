@@ -91,6 +91,7 @@ bool Server::Initialize() {
 
   // Initialization of sender's id mapping to ip-ports, where the id 0 is
   // already added.
+
   for (int32 i = 1; i < config_msg.node_ip_port_size(); ++i) {
     sender_->AddIdAddr(i, config_msg.node_ip_port(i));
     LOG(INFO) << "Server: AddIdAddr: " << i << " " << config_msg.node_ip_port(i);
@@ -108,6 +109,7 @@ bool Server::Initialize() {
   // Note that config_msg.partition should be a array of length #server + 1.
   // It's first element must be 0 and the last must be config_msg.key_range.
   bool found_local = false;
+  key_range_ = config_msg.key_range();
   for (int32 i = 0; i < server_num_; ++i) {
     int32 server_i_id = config_msg.server_id(i);
     server_ids_.push_back(server_i_id);
@@ -116,14 +118,16 @@ bool Server::Initialize() {
     if (server_i_id == local_id_) {
       local_index_ = i;
       start_key_ = config_msg.partition(i);
-      parameter_length_ = config_msg.partition(i + 1) - start_key_;
+      parameter_length_ = (config_msg.partition((i + 1) % server_num_) - start_key_
+                           + key_range_) % key_range_;
       found_local = true;
 
       // Chenbin: Initialize the backup_parameters_
       for (int32 j = 1; j <= backup_size_; j++) {
         int32 target = (i - j + server_num_) % server_num_;
         backup_parameters_.push_back(std::vector<float>(
-          config_msg.partition(target + 1) - config_msg.partition(target)));
+          (config_msg.partition((target + 1) % server_num_) -
+           config_msg.partition(target) + key_range_) % key_range_));
       }
     }
   }
@@ -442,7 +446,7 @@ void Server::Reconfigure(const Message_ConfigMessage &config_msg) {
   int32 bound = 7;  // ASP = INF, BSP = 1
   */
   // The consisitency_bound and the local_id will not change.
-  int agent_num, key_range;  // should be assigned to the attributes
+  int agent_num;  // should be assigned to the attributes
   bool found_local;
 
   // Respond to all agents to clear the pull_request_
@@ -450,7 +454,7 @@ void Server::Reconfigure(const Message_ConfigMessage &config_msg) {
 
   agent_num = config_msg.worker_num();
   server_num_ = config_msg.server_num();
-  key_range = config_msg.key_range();
+  key_range_ = config_msg.key_range();
 
   LOG(INFO) << "Reconfigure server_ids_ servers_";
   server_ids_.clear();
@@ -464,7 +468,8 @@ void Server::Reconfigure(const Message_ConfigMessage &config_msg) {
     if (server_i_id == local_id_) {
       local_index_ = i;
       start_key_ = config_msg.partition(i);
-      parameter_length_ = config_msg.partition(i + 1) - start_key_;
+      parameter_length_ = (config_msg.partition((i + 1) % server_num_)
+                           - start_key_ + key_range_) % key_range_;
       found_local = true;
     }
   }
@@ -475,11 +480,11 @@ void Server::Reconfigure(const Message_ConfigMessage &config_msg) {
   }
 
   LOG(INFO) << "Reconfigure the sender_";
-  sender_.reset(new ZmqCommunicator());
-  sender_->Initialize(FLAGS_ring_size, true, 1024, FLAGS_buffer_size);
-  for (int32 i = 0; i < config_msg.node_ip_port_size(); ++i) {
+  for (int32 i = 0; i < config_msg.node_ip_port_size(); i++) {
+    if (!sender_->CheckIdAddr(i, config_msg.node_ip_port(i))) {
+      sender_->DeleteId(i);
       sender_->AddIdAddr(i, config_msg.node_ip_port(i));
-      LOG(INFO) << "Server: AddIdAddr: " << i << " " << config_msg.node_ip_port(i);
+    }
   }
 
   // refresh master ids.

@@ -51,6 +51,7 @@ class Server {
   int32 bottom_version_;
   int32 agent_num_;
   int32 server_num_;
+  int32 key_range_;
   int32 backup_size_;
 
   std::vector<int32> master_ids_;
