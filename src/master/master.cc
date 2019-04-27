@@ -5,6 +5,7 @@
 
 #include <chrono>
 #include <fstream>
+#include <functional>
 #include <string>
 
 #include "src/communication/zmq_communicator.h"
