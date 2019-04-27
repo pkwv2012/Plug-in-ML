@@ -18,8 +18,8 @@ namespace rpscc {
 DEFINE_int32(heartbeat_timeout, 30, "The maximum time(seconds) to decide "
                                     "whether the node is offline.");
 DEFINE_int32(listen_port, 16666, "The listening port of cluster.");
-DEFINE_int32(heartbeat_gap, 3, "The heartbeat gap(seconds).");
-DEFINE_int32(detect_dead_node, 5, "The time(seconds) gap to detect dead node.");
+DEFINE_int32(heartbeat_gap, 5, "The heartbeat gap(seconds).");
+DEFINE_int32(detect_dead_node, 10, "The time(seconds) gap to detect dead node.");
 DEFINE_int32(max_cluster_node, 10000, "The maximum cluster number.");
 DEFINE_string(zookeeper_hosts, "127.0.0.1:2181", ""
               "Comma separated host:port pairs, "
@@ -145,14 +145,14 @@ void Master::MainLoop() {
                 ip + ":" + std::to_string(std::stoi(port) + 1));
           }
           DeliverConfig();
-          std::thread heartbeat_thread(
-            std::bind(&Master::DeliverHeartbeatLoop, this));
+          heartbeat_ = std::make_unique<std::thread>(
+              std::bind(&Master::DeliverHeartbeatLoop, this));
           auto cur_time = std::chrono::system_clock::now();
           for (int i = 0; i < config_.get_node_ip().size(); ++i) {
             alive_node_[i] = cur_time;
           }
-          std::thread detect_dead_node(
-            std::bind(&Master::DetectDeadNode, this));
+          detect_dead_node_ = std::make_unique<std::thread>(
+              std::bind(&Master::DetectDeadNode, this));
         }
         LOG(INFO) << "worker_num=" << config_.worker_num()
                   << "server_num=" << config_.server_num()
@@ -291,14 +291,18 @@ void Master::DeliverHeartbeat() {
 
 void Master::DeliverHeartbeatLoop() {
   while (1) {
-    DeliverHeartbeat();
+    // Wait for agent start heartbeat thread.
     std::this_thread::sleep_for(
-        std::chrono::seconds(FLAGS_heartbeat_gap));
+      std::chrono::seconds(FLAGS_heartbeat_gap));
+    DeliverHeartbeat();
   }
 }
 
 void Master::DetectDeadNode() {
   while (1) {
+    // If there are dead_node, master should restart the node.
+    std::this_thread::sleep_for(
+      std::chrono::seconds(FLAGS_detect_dead_node));
     auto dead_node = GetDeadNode();
     // Reconfig the cluster
     if (dead_node.size() > 0) {
@@ -309,9 +313,6 @@ void Master::DetectDeadNode() {
       }
       config_.FixConfig(dead_node);
     }
-    // If there are dead_node, master should restart the node.
-    std::this_thread::sleep_for(
-        std::chrono::seconds(FLAGS_detect_dead_node));
   }
 }
 

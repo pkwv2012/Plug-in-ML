@@ -95,6 +95,8 @@ class Master {
                      decltype(std::chrono::system_clock::now())> alive_node_;
   std::unordered_set<int32_t> terminated_node_;
   bool is_lead_;
+  std::unique_ptr<std::thread> heartbeat_;
+  std::unique_ptr<std::thread> detect_dead_node_;
 #ifdef USE_ZOOKEEPER
   zhandle_t* zh_;
 #endif  // USE_ZOOKEEPER
