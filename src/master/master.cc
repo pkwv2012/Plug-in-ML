@@ -169,6 +169,8 @@ void Master::MainLoop() {
         }
         break;
       }
+      default:
+        LOG(ERROR) << "Unknown message type";
     }
   }
 }
