@@ -7,8 +7,10 @@ cache:
   - $HOME/.cache
 
 script: 
-  - cd $HOME && bash install_dependencies.sh
-  - cd $HOME && bash build.sh
+  - REPO_HOME=`pwd`
+  - pwd
+  - cd $REPO_HOME && bash install_dependencies.sh
+  - cd $REPO_HOME && bash build.sh
 
 notifications:
   email:
