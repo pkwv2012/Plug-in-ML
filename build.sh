@@ -2,6 +2,7 @@
 
 set -euo pipfail
 
+cd $HOME
 mkdir -p build && cd build
 
 # Configure
