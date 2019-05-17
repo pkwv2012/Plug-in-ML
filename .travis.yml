@@ -16,9 +16,13 @@ install:
   - make check
   - sudo make install
   - sudo ldconfig
+  - cd $HOME/.cache
+  - echo "deb http://download.opensuse.org/repositories/network:/messaging:/zeromq:/release-stable/Debian_9.0/ ./" >> /etc/apt/sources.list
+  - wget https://download.opensuse.org/repositories/network:/messaging:/zeromq:/release-stable/Debian_9.0/Release.key -O- | sudo apt-key add
+  - apt-get install libzmq3-dev
 
 script: 
-  - cd $HOME && ./build.sh
+  - cd $HOME && bash build.sh
 
 notifications:
   email:
