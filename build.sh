@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-cd $HOME
+REPO_HOME=${REPO_HOME:-$(dirname "$0")}
 mkdir -p build && cd build
 
 # Configure
