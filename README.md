@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.com/purkyston/Plug-in-ML.svg?branch=master)](https://travis-ci.com/purkyston/Plug-in-ML)
+
 ## 简介
 通过Plug-in ML框架，用户不需要重新编写并行程序，而是将已有的，使用任何编程语言编写的串行机器学习程序，
 通过接口直接与我们所设计的计算框架对接，从而快速完成机器学习算法并行化的任务。
